@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+  
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Almoxarifado Inteligente | Protótipo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Almoxarifado Inteligente</h1><small>Protótipo educacional</small>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="sidebar-foot">Protótipo local em um único HTML. Ideal para estudo, demonstração em aula e validação da
+        lógica do sistema antes do desenvolvimento definitivo.</div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div class="top-title-group">
+          <div class="top-title" id="topTitle">Visão geral</div><select class="mobile-nav" id="mobileNav"
+            aria-label="Selecionar página"></select>
+        </div>
+        <div class="account-toolbar"><span class="account-user" id="accountUser"></span><button class="btn btn-light"
+            id="quickNew">+ Novo material</button><button class="btn btn-ghost" data-act="my-account">Minha
+            conta</button><button class="btn btn-ghost" data-act="logout">Sair</button></div>
+      </div>
+      <div class="wrap" id="app"></div>
+    </main>
+  </div>
+  <div id="authHost"></div>
+  <div id="modalHost"></div>
+  <div id="toastHost" class="toast-host"></div>
+  <div id="printMount" class="print-only"></div>
+  <script src="qrcode.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,217 @@
+/* Complementos ao style.css do protótipo para as telas da versão com Supabase. */
+
+:focus-visible {
+  outline: 3px solid #f4773080;
+  outline-offset: 2px;
+}
+
+.pagehead h1 {
+  font-size: 26px;
+  font-weight: 850;
+  color: var(--navy);
+}
+
+.pagehead-acao {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.carregando {
+  padding: 40px 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.nowrap { white-space: nowrap; }
+.dica { display: block; margin-top: 5px; font-size: 11px; color: #7e919f; line-height: 1.45; }
+.aviso-texto { color: #9f6f08; margin-top: 4px; }
+
+.form-erro,
+.auth-erro {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ffe9eb;
+  color: #9b2f3b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---------- Login ---------- */
+.auth-aviso { margin-bottom: 16px; }
+.auth-dica { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+.senha-campo {
+  position: relative;
+  display: flex;
+}
+.senha-campo input { padding-right: 86px !important; }
+.senha-ver {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: #eef3f7;
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 760;
+  padding: 7px 10px;
+  border-radius: 9px;
+}
+
+.auth-link {
+  display: block;
+  margin: 16px auto 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font-weight: 760;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Painel ---------- */
+.painel-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.stat-link {
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.stat-link:hover { border-color: #f4773066; }
+.painel-bloco { margin-bottom: 18px; }
+.painel-classes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.proximas { margin: 14px 0 0; padding-left: 20px; line-height: 1.7; color: var(--ink); }
+.proximas li { margin-bottom: 4px; }
+
+/* ---------- Tabelas e filtros ---------- */
+.filtros select,
+.filtros input { min-height: 42px; }
+.filtros select { width: auto; min-width: 170px; }
+.filtro-campo {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 760;
+  color: #5d7484;
+}
+.filtro-largo { flex: 1; min-width: 200px; }
+.filtros .btn { align-self: flex-end; }
+
+.acoes-linha { display: flex; flex-wrap: wrap; gap: 6px; }
+.mais { display: flex; justify-content: center; padding-top: 14px; }
+
+.role-pill { white-space: nowrap; }
+.perfil-master { background: #10283f; color: #fff; }
+.perfil-gestor { background: #e9f1ff; color: #2d63b7; }
+.perfil-almoxarife { background: #e8f7ef; color: #177c5b; }
+.perfil-solicitante { background: #fff6df; color: #9f6f08; }
+.perfil-consulta { background: #eff3f6; color: #6c7b88; }
+
+.mudancas { margin: 0; padding-left: 16px; line-height: 1.7; }
+.cor-amostra {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1px solid #9aabb9;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------- Formulários ---------- */
+.opcoes-acesso { display: grid; gap: 10px; margin-top: 10px; }
+.opcao-acesso {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+.opcao-acesso:has(input:checked) { border-color: var(--orange); background: #fff7f1; }
+.opcao-acesso input { width: auto; margin-top: 3px; }
+.opcao-acesso span { display: grid; gap: 3px; }
+.opcao-acesso small { color: var(--muted); line-height: 1.45; }
+.senha-provisoria { margin-top: 14px; }
+.senha-provisoria[hidden] { display: none; }
+.linha-senha,
+.linha-cor { display: flex; gap: 8px; }
+.linha-senha input { flex: 1; font-family: Consolas, "Courier New", monospace; letter-spacing: .5px; }
+.linha-cor input[type=color] { width: 56px; min-width: 56px; padding: 4px; height: 44px; }
+.previa-classe { min-height: 44px; display: flex; align-items: center; }
+.avisos-classe { display: grid; gap: 8px; margin-top: 14px; }
+
+/* ---------- Confirmação de operação ---------- */
+.concluido { display: flex; gap: 16px; align-items: flex-start; line-height: 1.6; }
+.concluido p + p, .concluido p + div, .concluido div + p { margin-top: 10px; }
+.concluido-marca {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #e8f7ef;
+  color: #177c5b;
+  font-size: 24px;
+  font-weight: 900;
+}
+.senha-entrega {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed var(--orange);
+  background: #fff7f1;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.senha-entrega span { font-size: 12px; color: #8b5d31; font-weight: 760; }
+.senha-entrega b { font-family: Consolas, "Courier New", monospace; font-size: 20px; letter-spacing: 1px; color: var(--navy); }
+
+/* ---------- Classes, unidades e setores ---------- */
+.family-card.removida,
+.lista-simples li.removida { opacity: .65; }
+.classe-descricao { margin-top: 4px; color: var(--ink); }
+.removidas-bloco { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 14px; justify-items: start; }
+.removidas-bloco .family-grid { width: 100%; }
+
+.bloco-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.lista-simples { list-style: none; margin: 0; padding: 0; }
+.lista-simples li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf2f6;
+}
+.lista-simples li.vazio { color: var(--muted); justify-content: flex-start; }
+
+.conta-dados { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
+.conta-dados b { word-break: break-word; }
+
+@media (max-width: 800px) {
+  .fields, .conta-dados { grid-template-columns: 1fr; }
+  .filtros select { width: 100%; }
+  .bloco-topo { flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Rodapé da janela sempre visível em formulários longos. */
+.modal-foot {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  z-index: 2;
+}

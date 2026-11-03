@@ -1,0 +1,39 @@
+ALMOXARIFADO INTELIGENTE - VERSÃO ATUALIZADA
+
+Como executar:
+1. Extraia o arquivo ZIP.
+2. Abra a pasta no VS Code.
+3. Abra index.html no Chrome ou Edge. Para testar Web NFC, use um ambiente HTTPS e aparelho/navegador compatíveis.
+4. No primeiro acesso, crie o usuário administrador.
+
+Implementações desta versão:
+- Anexo opcional no pedido (foto ou PDF), com limite de tamanho.
+- Prazo de 7 dias para retirada e indicação visual de atraso.
+- Categoria da retirada: comum, perdido ou sem condições de uso.
+- Confirmação de recebimento por nome/assinatura digitada, foto ou leitura NFC quando suportada.
+- Registro da evidência no comprovante de saída.
+- Nota fiscal obrigatória em lançamentos de entrada.
+- Exportação de movimentações para arquivo .xls compatível com Excel, por intervalo de datas ou últimos 7 dias.
+- Registro de resumo semanal na primeira abertura do painel em cada semana.
+- Materiais relacionados informados por códigos.
+- Índice de rotatividade em três níveis, calculado pelas saídas dos últimos 90 dias.
+- Bloqueio de uma mesma conta em abas simultâneas do mesmo navegador.
+
+Limitações importantes do protótipo local:
+- O bloqueio de conta simultânea funciona apenas entre abas do mesmo navegador/perfil. Para impedir login simultâneo entre computadores e filiais é necessário servidor central com autenticação e banco de dados.
+- Web NFC não funciona em todos os aparelhos/navegadores e normalmente exige HTTPS. A leitura registra a identificação disponibilizada pela etiqueta; não substitui um leitor NFC industrial nem autenticação corporativa.
+- O resumo semanal é registrado quando o painel é aberto pela primeira vez na semana. Para gerar e enviar arquivos automaticamente com o navegador fechado é necessário serviço de servidor/agendamento.
+- Os dados ficam no armazenamento local do navegador. O modo offline permite consultar e operar localmente, mas não sincroniza automaticamente entre filiais ou dispositivos.
+- O arquivo .xls é uma planilha HTML compatível com Excel, não um arquivo binário XLS legado.
+- A retenção e o arquivamento físico oficial por um ano devem ser definidos e validados com a política documental da empresa. O protótipo preserva os registros no armazenamento local até o usuário limpar ou substituir os dados.
+
+Faça backup regularmente antes de usar dados de demonstração ou apagar o armazenamento do navegador.
+
+
+CONTAS: LOGIN E CADASTRO
+- No primeiro acesso, crie a conta administradora.
+- Depois, a tela inicial oferece as opções "Fazer login" e "Criar conta".
+- O cadastro público cria automaticamente um usuário com perfil Solicitante.
+- O Solicitante pode consultar materiais e criar/acompanhar as próprias solicitações.
+- Somente o administrador pode criar usuários com perfis especiais ou alterar permissões.
+- As contas são armazenadas localmente no navegador deste protótipo. Para compartilhar contas entre computadores/filiais, será necessário backend e banco de dados central.
