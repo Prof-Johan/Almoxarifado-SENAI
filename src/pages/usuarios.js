@@ -3,6 +3,7 @@ import { $, esc, cabecalho, abrirModal, fecharModal, mostrarConcluido, executand
 import { PERFIS, rotuloPerfil, podeGerenciar, perfisAtribuiveis, nivel } from '../lib/permissoes.js';
 import { gerenciarUsuario } from '../lib/funcoes.js';
 import { temEmailReal } from '../lib/sessao.js';
+import { ouvir } from '../lib/tempoReal.js';
 
 const SITUACOES = {
   atuais: 'Ativos e bloqueados',
@@ -13,7 +14,8 @@ const SITUACOES = {
 
 const normalizar = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export async function montar(el, { perfil: ator }) {
+export async function montar(el, ctx) {
+  const ator = ctx.perfil;
   let usuarios = [];
   let unidades = [];
   let setores = [];
@@ -308,6 +310,10 @@ export async function montar(el, { perfil: ator }) {
 
   await carregar();
   desenhar();
+
+  ctx.aoSair(ouvir(['perfis', 'unidades', 'setores'], async () => {
+    if (ctx.ativa()) await recarregar();
+  }));
 
   el.addEventListener('input', e => {
     if (e.target.id === 'filtroBusca') { filtro.busca = e.target.value; atualizarTabela(); }

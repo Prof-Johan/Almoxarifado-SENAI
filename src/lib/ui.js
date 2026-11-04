@@ -39,11 +39,19 @@ export function pillClasse(classe) {
 // Janela (modal). Não fecha ao clicar fora, para não perder o que foi
 // digitado. Fechar com algo preenchido pede confirmação.
 // ---------------------------------------------------------------------
-export function abrirModal({ titulo, subtitulo = '', corpo, rodape = '', pequeno = false }) {
+function encerrarModalAtual() {
+  const fundo = $('#modalHost .modal-backdrop');
+  if (!fundo) return;
+  (fundo._aoFechar || []).forEach(fn => { try { fn(); } catch { /* ignora */ } });
+  fundo._aoFechar = [];
+}
+
+export function abrirModal({ titulo, subtitulo = '', corpo, rodape = '', pequeno = false, largo = false, aoFechar }) {
+  encerrarModalAtual();
   const host = $('#modalHost');
   host.innerHTML = `
     <div class="modal-backdrop">
-      <div class="modal ${pequeno ? 'small' : ''}" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="modal ${pequeno ? 'small' : ''} ${largo ? 'largo' : ''}" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
         <div class="modal-head">
           <div><div class="modal-title" id="modalTitulo">${titulo}</div>${subtitulo ? `<p>${subtitulo}</p>` : ''}</div>
           <button class="close" type="button" data-fechar aria-label="Fechar">×</button>
@@ -53,16 +61,23 @@ export function abrirModal({ titulo, subtitulo = '', corpo, rodape = '', pequeno
       </div>
     </div>`;
   const fundo = host.firstElementChild;
-  fundo.addEventListener('input', () => { fundo.dataset.alterado = '1'; });
+  fundo._aoFechar = aoFechar ? [aoFechar] : [];
+  fundo.addEventListener('input', e => { if (!e.target.closest('[data-nao-altera]')) fundo.dataset.alterado = '1'; });
   fundo.addEventListener('click', e => { if (e.target.closest('[data-fechar]')) fecharModal(); });
-  setTimeout(() => $('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea', fundo)?.focus(), 40);
+  setTimeout(() => $('input:not([type=hidden]):not([disabled]):not([type=checkbox]), select:not([disabled]), textarea', fundo)?.focus(), 40);
   return fundo;
+}
+
+// Registra algo para fazer quando a janela fechar (por exemplo, parar de ouvir mudanças).
+export function aoFecharModal(fundo, fn) {
+  (fundo._aoFechar ||= []).push(fn);
 }
 
 export function fecharModal(forcar = false) {
   const fundo = $('#modalHost .modal-backdrop');
   if (!fundo) return true;
   if (!forcar && fundo.dataset.alterado && !window.confirm('Descartar o que foi preenchido?')) return false;
+  encerrarModalAtual();
   $('#modalHost').innerHTML = '';
   return true;
 }
@@ -101,6 +116,9 @@ export function erroAmigavel(erro) {
   if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
   if (codigo === '23505' || /duplicate key/i.test(msg)) {
     if (/classes_nome/.test(msg)) return 'Já existe uma classe com esse nome.';
+    if (/materiais_prn/.test(msg)) return 'Já existe um material com este PRN.';
+    if (/materiais_posicao/.test(msg)) return 'Essa posição já está ocupada por outro material. Escolha outra ou use "Sugerir posição livre".';
+    if (/depositos_numero/.test(msg)) return 'Já existe um depósito com esse número nesta unidade.';
     if (/unidades_nome/.test(msg)) return 'Já existe uma unidade com esse nome.';
     if (/setores_nome/.test(msg)) return 'Já existe um setor com esse nome.';
     return 'Já existe um cadastro com esses dados.';

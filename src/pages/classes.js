@@ -1,21 +1,29 @@
 import { supabase } from '../lib/supabase.js';
 import { $, esc, cabecalho, abrirModal, fecharModal, executando, erroAmigavel, toast, contraste, fmtDataHora } from '../lib/ui.js';
 import { nivel } from '../lib/permissoes.js';
-import { atualizarRegistro, criarRegistro } from '../lib/dados.js';
+import { atualizarRegistro, criarRegistro, buscarTodos } from '../lib/dados.js';
+import { ouvir } from '../lib/tempoReal.js';
 
 const corValida = c => /^#[0-9a-f]{6}$/i.test(c || '');
 const normalizar = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
-export async function montar(el, { perfil }) {
-  const podeEditar = nivel(perfil.perfil) >= 4;
+export async function montar(el, ctx) {
+  const podeEditar = nivel(ctx.perfil.perfil) >= 4;
   let classes = [];
+  let quantidade = new Map();
   let mostrarRemovidas = false;
 
   async function carregar() {
-    const { data, error } = await supabase.from('classes').select('*').order('numero');
-    if (error) throw error;
-    classes = data;
+    const [c, m] = await Promise.all([
+      supabase.from('classes').select('*').order('numero'),
+      buscarTodos(() => supabase.from('materiais').select('id,classe_id').is('removido_em', null).order('id')),
+    ]);
+    if (c.error) throw c.error;
+    classes = c.data;
+    quantidade = new Map();
+    m.forEach(x => quantidade.set(x.classe_id, (quantidade.get(x.classe_id) || 0) + 1));
   }
+  const qtd = c => quantidade.get(c.id) || 0;
 
   const ativas = () => classes.filter(c => !c.removido_em);
   const removidas = () => classes.filter(c => c.removido_em);
@@ -30,7 +38,7 @@ export async function montar(el, { perfil }) {
       <div class="family-swatch" style="background:${esc(c.cor)};border-color:${esc(borda)}" aria-hidden="true"></div>
       <div class="family-content">
         <div class="family-name">${esc(c.nome)}</div>
-        <div class="small muted">Nº ${c.numero} · ${esc(c.cor)}</div>
+        <div class="small muted">Nº ${c.numero} · ${esc(c.cor)} · ${qtd(c)} material(is)</div>
         ${c.descricao ? `<div class="small classe-descricao">${esc(c.descricao)}</div>` : ''}
         ${c.removido_em ? `<div class="small muted">Removida em ${fmtDataHora(c.removido_em)}</div>` : ''}
       </div>
@@ -70,7 +78,9 @@ export async function montar(el, { perfil }) {
     const mesmoNome = ativas().find(c => c.id !== classe?.id && normalizar(c.nome) === normalizar(nome));
     if (mesmoNome && nome) lista.push(`Já existe a classe <b>${esc(mesmoNome.nome)}</b>.`);
     if (classe && corValida(cor) && cor.toUpperCase() !== classe.cor.toUpperCase()) {
-      lista.push('Ao mudar a cor, as etiquetas já impressas desta classe precisam ser reimpressas.');
+      lista.push(qtd(classe)
+        ? `Ao mudar a cor, as etiquetas dos ${qtd(classe)} material(is) desta classe passam a aparecer como "a reimprimir".`
+        : 'Ao mudar a cor, as etiquetas já impressas desta classe precisam ser reimpressas.');
     }
     return lista.map(a => `<div class="notice">${a}</div>`).join('');
   }
@@ -141,15 +151,44 @@ export async function montar(el, { perfil }) {
   }
 
   async function remover(classe) {
-    if (!window.confirm(`Remover a classe ${classe.nome}? Ela deixa de aparecer no cadastro de materiais. O histórico fica guardado e a classe pode ser restaurada.`)) return;
-    try {
-      await atualizarRegistro('classes', classe.id, { removido_em: new Date().toISOString() });
-    } catch (falha) {
-      return toast(erroAmigavel(falha), 'erro');
+    const n = qtd(classe);
+    if (!n) {
+      if (!window.confirm(`Remover a classe ${classe.nome}? Ela deixa de aparecer no cadastro de materiais. O histórico fica guardado e a classe pode ser restaurada.`)) return;
+      const { error } = await supabase.rpc('remover_classe', { p_classe: classe.id });
+      if (error) return toast(erroAmigavel(error), 'erro');
+      toast('Classe removida.');
+      await carregar();
+      return desenhar();
     }
-    toast('Classe removida.');
-    await carregar();
-    desenhar();
+    // Com materiais: escolher para qual classe eles vão.
+    const destinos = ativas().filter(c => c.id !== classe.id);
+    const fundo = abrirModal({
+      titulo: `Remover a classe ${esc(classe.nome)}`,
+      subtitulo: `${n} material(is) usam esta classe. Escolha para qual classe eles vão.`,
+      pequeno: true,
+      corpo: `<form id="formRemoverClasse" novalidate>
+        <div class="field"><label for="rcDestino">Mover os materiais para *</label>
+          <select id="rcDestino"><option value="">Escolha a classe</option>${destinos.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></div>
+        <p class="small muted" style="margin-top:12px">As etiquetas desses materiais passam a aparecer como "a reimprimir", porque a cor muda.</p>
+        <p class="form-erro" id="rcErro" role="alert" hidden></p>
+      </form>`,
+      rodape: `<button class="btn btn-ghost" type="button" data-fechar>Cancelar</button>
+               <button class="btn btn-danger" type="submit" form="formRemoverClasse">Mover e remover</button>`,
+    });
+    $('#formRemoverClasse', fundo).addEventListener('submit', async e => {
+      e.preventDefault();
+      const destino = Number($('#rcDestino', fundo).value);
+      const erro = $('#rcErro', fundo);
+      if (!destino) { erro.textContent = 'Escolha a classe que vai receber os materiais.'; erro.hidden = false; return; }
+      await executando(e.submitter, async () => {
+        const { error } = await supabase.rpc('remover_classe', { p_classe: classe.id, p_destino: destino });
+        if (error) { erro.textContent = erroAmigavel(error); erro.hidden = false; return; }
+        fecharModal(true);
+        toast('Materiais movidos e classe removida.');
+        await carregar();
+        desenhar();
+      });
+    });
   }
 
   async function restaurar(classe) {
@@ -167,6 +206,12 @@ export async function montar(el, { perfil }) {
 
   await carregar();
   desenhar();
+
+  ctx.aoSair(ouvir(['classes', 'materiais'], async () => {
+    if (!ctx.ativa()) return;
+    await carregar();
+    desenhar();
+  }));
 
   el.addEventListener('click', e => {
     const botao = e.target.closest('[data-acao]');

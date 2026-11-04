@@ -1,5 +1,6 @@
 import './style.css';
 import './app.css';
+import './senai.css';
 import { supabase, configurado, tipoLinkInicial } from './lib/supabase.js';
 import { $, esc, erroAmigavel, fecharModal, modalAberto } from './lib/ui.js';
 import { estado, carregarPerfil, verificarSessao, sair, lerAviso, vigiarSessao } from './lib/sessao.js';
@@ -10,11 +11,16 @@ import * as usuarios from './pages/usuarios.js';
 import * as classes from './pages/classes.js';
 import * as cadastros from './pages/cadastros.js';
 import * as historico from './pages/historico.js';
+import * as materiais from './pages/materiais.js';
+import * as depositos from './pages/depositos.js';
 import { abrirMinhaConta } from './pages/conta.js';
+import { iniciarTempoReal, ouvir, aoMudarConexao } from './lib/tempoReal.js';
 
 // Páginas e o nível mínimo de perfil para ver cada uma.
 const ROTAS = {
   painel: { rotulo: 'Painel', titulo: 'Visão geral', nivel: 1, pagina: painel },
+  materiais: { rotulo: 'Materiais', titulo: 'Materiais', nivel: 1, pagina: materiais },
+  depositos: { rotulo: 'Depósitos', titulo: 'Depósitos e endereços', nivel: 1, pagina: depositos },
   classes: { rotulo: 'Classes e cores', titulo: 'Classes de materiais', nivel: 1, pagina: classes },
   usuarios: { rotulo: 'Usuários', titulo: 'Usuários e acessos', nivel: 4, pagina: usuarios },
   cadastros: { rotulo: 'Unidades e setores', titulo: 'Unidades e setores', nivel: 4, pagina: cadastros },
@@ -23,10 +29,11 @@ const ROTAS = {
 
 const rotasPermitidas = () => Object.entries(ROTAS).filter(([, r]) => nivel(estado.perfil?.perfil) >= r.nivel);
 
+// Endereços como #/materiais ou #/materiais/MAT-000123 (aberto pelo QR da etiqueta).
 function rotaAtual() {
-  const nome = (window.location.hash.match(/^#\/([\w-]+)/) || [])[1];
+  const [, nome, parametro] = window.location.hash.match(/^#\/([\w-]+)(?:\/([^/?#]+))?/) || [];
   const permitida = rotasPermitidas().some(([id]) => id === nome);
-  return permitida ? nome : 'painel';
+  return permitida ? { nome, parametro: parametro || '' } : { nome: 'painel', parametro: '' };
 }
 
 function navegar(nome) {
@@ -39,9 +46,12 @@ function montarLayout() {
   $('#raiz').innerHTML = `
     <div class="app">
       <aside class="sidebar">
-        <div class="brand"><h1>Almoxarifado Inteligente</h1><small>SENAI · Klabin</small></div>
+        <div class="brand">
+          <img class="brand-logo" src="/senai-logo-branco.png" alt="SENAI" width="132" height="38">
+          <h1>Almoxarifado Inteligente</h1><small>Projeto SENAI · Klabin</small>
+        </div>
         <nav class="nav" id="nav" aria-label="Menu principal"></nav>
-        <div class="sidebar-foot">Versão em desenvolvimento. Os módulos de materiais, recebimento e pedidos entram nas próximas entregas.</div>
+        <div class="sidebar-foot">Versão em desenvolvimento. Recebimento e pedidos entram nas próximas entregas.</div>
       </aside>
       <div class="main">
         <header class="topbar">
@@ -50,6 +60,7 @@ function montarLayout() {
             <select class="mobile-nav" id="mobileNav" aria-label="Ir para a página"></select>
           </div>
           <div class="account-toolbar">
+            <span class="ao-vivo" id="aoVivo" title="Conectando..."><span class="ponto"></span><span class="texto">Conectando</span></span>
             <span class="account-user">${esc(p.nome)} · ${esc(rotuloPerfil(p.perfil))}</span>
             <button class="btn btn-ghost" type="button" id="btnConta">Minha conta</button>
             <button class="btn btn-ghost" type="button" id="btnSair">Sair</button>
@@ -66,14 +77,26 @@ function montarLayout() {
   $('#mobileNav').addEventListener('change', e => navegar(e.target.value));
   $('#btnConta').addEventListener('click', () => abrirMinhaConta());
   $('#btnSair').addEventListener('click', () => sair());
+  aoMudarConexao(conectado => {
+    const marca = $('#aoVivo');
+    if (!marca) return;
+    marca.classList.toggle('conectado', conectado);
+    marca.querySelector('.texto').textContent = conectado ? 'Ao vivo' : 'Reconectando';
+    marca.title = conectado ? 'As telas se atualizam sozinhas quando alguém muda algo.' : 'Sem atualização automática no momento. Tentando reconectar.';
+  });
 }
 
 let renderizacao = 0;
+let limpezas = [];
 
 async function desenharPagina() {
-  const atual = rotaAtual();
+  const { nome: atual, parametro } = rotaAtual();
   const rota = ROTAS[atual];
   const permitidas = rotasPermitidas();
+
+  // Para de ouvir as mudanças da página anterior.
+  limpezas.forEach(fn => { try { fn(); } catch { /* ignora */ } });
+  limpezas = [];
 
   $('#nav').innerHTML = permitidas
     .map(([id, r]) => `<button type="button" data-rota="${id}" class="${id === atual ? 'active' : ''}" ${id === atual ? 'aria-current="page"' : ''}>${r.rotulo}</button>`)
@@ -90,13 +113,39 @@ async function desenharPagina() {
   pagina.innerHTML = '<div class="carregando">Carregando...</div>';
   $('#app').replaceChildren(pagina);
   const minha = ++renderizacao;
+  const ctx = {
+    perfil: estado.perfil,
+    navegar,
+    parametro,
+    ativa: () => minha === renderizacao,
+    aoSair: fn => { if (minha === renderizacao) limpezas.push(fn); else fn(); },
+  };
   try {
-    await rota.pagina.montar(pagina, { perfil: estado.perfil, navegar, ativa: () => minha === renderizacao });
+    await rota.pagina.montar(pagina, ctx);
   } catch (erro) {
     if (minha !== renderizacao) return;
     pagina.innerHTML = `<div class="card card-pad empty"><h3>Não foi possível abrir esta página</h3><p>${esc(erroAmigavel(erro))}</p><button class="btn btn-light" type="button" data-recarregar>Tentar de novo</button></div>`;
     pagina.querySelector('[data-recarregar]').addEventListener('click', desenharPagina);
   }
+}
+
+// Se o gestor mudar o seu perfil, o menu e as permissões mudam na hora.
+let ouvindoPerfil = false;
+function ouvirMeuPerfil() {
+  if (ouvindoPerfil) return;
+  ouvindoPerfil = true;
+  ouvir(['perfis'], async (_t, mudancas) => {
+    const meu = mudancas.find(x => (x.novo?.id || x.antigo?.id) === estado.perfil?.id);
+    if (!meu || !$('#app')) return;
+    const antes = estado.perfil?.perfil;
+    const perfil = await carregarPerfil().catch(() => null);
+    if (!perfil || !perfil.ativo || perfil.removido_em) return;
+    if (perfil.perfil !== antes) {
+      fecharModal(true);
+      montarLayout();
+      await desenharPagina();
+    }
+  });
 }
 
 async function abrirSistema() {
@@ -120,6 +169,8 @@ async function abrirSistema() {
     await sair('Sua conta foi acessada em outro aparelho. Por segurança, esta sessão foi encerrada.');
     return;
   }
+  iniciarTempoReal();
+  ouvirMeuPerfil();
   montarLayout();
   await desenharPagina();
 }

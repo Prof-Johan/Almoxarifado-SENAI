@@ -48,7 +48,7 @@ textarea {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid #d5e0e8;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #fff;
   color: var(--ink);
   outline: none;
@@ -123,7 +123,7 @@ p {
   color: inherit;
   text-align: left;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-weight: 700
 }
 
@@ -212,7 +212,7 @@ p {
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 8px;
   box-shadow: var(--shadow)
 }
 
@@ -312,7 +312,7 @@ p {
   font-family: Consolas, monospace;
   background: #eef4f8;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 4px;
   font-weight: 760;
   color: var(--navy);
   display: inline-block
@@ -326,7 +326,7 @@ p {
 
 .btn {
   border: 0;
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 11px 14px;
   font-weight: 760
 }
@@ -372,7 +372,7 @@ p {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
@@ -409,7 +409,7 @@ p {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-weight: 750;
   font-size: 12px;
   border: 1px solid rgba(0, 0, 0, .08)
@@ -423,7 +423,7 @@ p {
 
 .hero {
   background: linear-gradient(120deg, #10283f 0%, #16354d 65%, #214864 100%);
-  border-radius: 22px;
+  border-radius: 8px;
   padding: 26px;
   display: flex;
   align-items: center;
@@ -456,7 +456,7 @@ p {
   padding: 13px 14px;
   border-left: 4px solid var(--orange);
   background: #fff7f1;
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 6px 6px 0;
   color: #8b5d31;
   font-size: 12px;
   line-height: 1.6
@@ -470,7 +470,7 @@ p {
 
 .kv .box {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 6px;
   padding: 14px
 }
 
@@ -537,7 +537,7 @@ p {
   margin-top: 14px;
   border: 1px dashed #bfd2de;
   background: #f2f8fb;
-  border-radius: 14px;
+  border-radius: 6px;
   padding: 14px 16px;
   display: flex;
   justify-content: space-between;
@@ -562,7 +562,7 @@ p {
 
 .preview .state {
   padding: 8px 11px;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 820
 }
@@ -597,7 +597,7 @@ p {
   max-height: calc(100vh - 40px);
   overflow: auto;
   background: #fff;
-  border-radius: 22px;
+  border-radius: 8px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, .25)
 }
 
@@ -631,7 +631,7 @@ p {
   border: 0;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-size: 24px;
   color: #617887
 }
@@ -657,7 +657,7 @@ p {
 
 .loc-tile {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 6px;
   min-height: 72px;
   background: #f8fbfd;
   padding: 10px;
@@ -691,7 +691,7 @@ p {
   background: #10283f;
   color: #fff;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: var(--shadow);
   max-width: 360px
 }
@@ -731,7 +731,7 @@ p {
 .label-sheet {
   background: #fff;
   border: 2px solid #101010;
-  border-radius: 22px;
+  border-radius: 8px;
   overflow: hidden
 }
 
@@ -753,7 +753,7 @@ p {
 .label-mark {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #101010;
   color: #fff;
   display: grid;
@@ -770,7 +770,7 @@ p {
 .label-colorbox {
   border: 2px solid #101010;
   padding: 10px 16px;
-  border-radius: 14px;
+  border-radius: 6px;
   font-weight: 900;
   font-size: 17px;
   color: #101010;
@@ -1017,7 +1017,7 @@ p {
   gap: 14px;
   border: 1px solid var(--line);
   background: #fbfdff;
-  border-radius: 14px;
+  border-radius: 6px;
   padding: 14px
 }
 
@@ -1025,7 +1025,7 @@ p {
   height: 54px;
   width: 54px;
   border: 1px solid;
-  border-radius: 12px;
+  border-radius: 6px;
   flex-shrink: 0
 }
 
@@ -1052,7 +1052,7 @@ p {
   align-items: center;
   min-height: 42px;
   padding: 10px 15px;
-  border-radius: 12px;
+  border-radius: 6px;
   font-weight: 850;
   border: 1px solid rgba(16, 40, 63, .12);
   overflow-wrap: anywhere
@@ -1081,7 +1081,7 @@ p {
   background: #f3f8fc;
   border: 1px solid #d7e8f3;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 6px;
   margin-top: 10px
 }
 
@@ -1132,7 +1132,7 @@ input[type=color] {
 .dual-preview-cell {
   background: #f0f7fb;
   border: 1px solid #c6d9e6;
-  border-radius: 14px;
+  border-radius: 6px;
   padding: 17px;
   min-height: 142px;
   min-width: 0
@@ -1170,7 +1170,7 @@ input[type=color] {
 }
 
 .modern-label {
-  border-radius: 16px;
+  border-radius: 6px;
   box-shadow: 0 4px 18px rgba(14, 35, 50, .07);
   border: 2px solid #1a2530;
   overflow: hidden
@@ -1204,13 +1204,13 @@ input[type=color] {
 .modern-label .label-mark {
   background: var(--catink);
   color: var(--cat);
-  border-radius: 8px
+  border-radius: 4px
 }
 
 .modern-label .label-family-chip {
   padding: 10px 14px;
   border: 2px solid var(--catink);
-  border-radius: 12px;
+  border-radius: 6px;
   color: var(--catink);
   font-size: 14px;
   font-weight: 900;
@@ -1439,7 +1439,7 @@ input[type=color] {
   font-weight: 750;
   padding: 7px 9px;
   background: #edf4f8;
-  border-radius: 9px
+  border-radius: 4px
 }
 
 .auth-layer {
@@ -1457,7 +1457,7 @@ input[type=color] {
 .auth-card {
   background: #fff;
   box-shadow: 0 26px 90px rgba(0, 0, 0, .3);
-  border-radius: 23px;
+  border-radius: 8px;
   padding: 34px;
   width: min(500px, 100%)
 }
@@ -1468,7 +1468,7 @@ input[type=color] {
   height: 49px;
   align-items: center;
   justify-content: center;
-  border-radius: 13px;
+  border-radius: 6px;
   background: #f47730;
   color: white;
   font-weight: 900;
@@ -1516,7 +1516,7 @@ input[type=color] {
 .role-grid .box {
   border: 1px solid var(--line);
   padding: 14px;
-  border-radius: 12px
+  border-radius: 6px
 }
 
 .role-grid .box span {
@@ -1553,7 +1553,7 @@ input[type=color] {
 .role-pill {
   font-size: 10px;
   letter-spacing: .8px;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 7px 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -1592,7 +1592,7 @@ input[type=color] {
   margin: auto;
   padding: 29px;
   border: 2px solid #172e43;
-  border-radius: 13px;
+  border-radius: 6px;
   font-family: Arial, sans-serif;
   box-shadow: 0 8px 20px rgba(0, 0, 0, .06)
 }
@@ -1636,7 +1636,7 @@ input[type=color] {
 .receipt-field {
   padding: 11px 13px;
   border: 1px solid #dce6ed;
-  border-radius: 8px;
+  border-radius: 4px;
   min-height: 64px;
   overflow-wrap: anywhere
 }
@@ -1661,7 +1661,7 @@ input[type=color] {
   border-left: 6px solid #f47730;
   background: #f4f8fa;
   padding: 14px 17px;
-  border-radius: 8px
+  border-radius: 4px
 }
 
 .receipt-item-name {
@@ -1690,7 +1690,7 @@ input[type=color] {
 .receipt-balance {
   border: 1px solid #cadbe6;
   padding: 13px;
-  border-radius: 9px;
+  border-radius: 4px;
   background: #fff
 }
 
@@ -1807,7 +1807,7 @@ input[type=color] {
 
 /* Campos e ações do login e do cadastro compartilham o mesmo acabamento arredondado. */
 .auth-card {
-  border-radius: 24px
+  border-radius: 8px
 }
 
 .auth-fields input,
@@ -1817,7 +1817,7 @@ input[type=color] {
   min-height: 48px;
   padding: 12px 15px;
   border: 1px solid #d5e0e8;
-  border-radius: 14px;
+  border-radius: 6px;
   background: #fff;
   color: var(--ink);
   transition: border-color .18s, box-shadow .18s
@@ -1832,7 +1832,7 @@ input[type=color] {
 
 .auth-fields .auth-btn {
   min-height: 48px;
-  border-radius: 14px
+  border-radius: 6px
 }
 
 .auth-switch {
@@ -1842,14 +1842,14 @@ input[type=color] {
   margin: -7px 0 20px;
   padding: 5px;
   background: #eef3f7;
-  border-radius: 16px
+  border-radius: 6px
 }
 
 .auth-switch .btn {
   width: 100%;
   min-height: 44px;
   justify-content: center;
-  border-radius: 12px
+  border-radius: 6px
 }
 
 .auth-role-note {
@@ -1857,7 +1857,7 @@ input[type=color] {
   padding: 12px 14px;
   background: #f1f7fb;
   border: 1px solid #d7e6ef;
-  border-radius: 14px;
+  border-radius: 6px;
   color: #496276;
   font-size: 12px;
   line-height: 1.55

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase.js';
 import { $, esc, cabecalho, abrirModal, fecharModal, executando, erroAmigavel, toast } from '../lib/ui.js';
 import { atualizarRegistro, criarRegistro } from '../lib/dados.js';
+import { ouvir } from '../lib/tempoReal.js';
 
 const TIPOS = {
   unidades: {
@@ -21,7 +22,7 @@ const TIPOS = {
   },
 };
 
-export async function montar(el) {
+export async function montar(el, ctx) {
   const dados = { unidades: [], setores: [] };
   let mostrarRemovidos = false;
 
@@ -119,6 +120,12 @@ export async function montar(el) {
 
   await carregar();
   desenhar();
+
+  ctx.aoSair(ouvir(['unidades', 'setores'], async () => {
+    if (!ctx.ativa()) return;
+    await carregar();
+    desenhar();
+  }));
 
   el.addEventListener('click', e => {
     const botao = e.target.closest('[data-acao]');

@@ -1,6 +1,9 @@
 # Almoxarifado Inteligente
 
-Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI. Esta é a primeira entrega da versão com banco de dados central: login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
+Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com banco de dados central no Supabase.
+
+- **Entrega 1:** login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
+- **Entrega 2:** depósitos e endereços, materiais, saldo com movimentações, etiquetas com QR, fotos, atualização em tempo real e identidade visual do SENAI.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
 
@@ -14,6 +17,13 @@ O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo
 - Classes de cor editáveis, com número fixo, aviso de cor repetida e aviso de reimpressão de etiquetas.
 - Unidades e setores.
 - Histórico de quem criou, editou, removeu ou restaurou cada cadastro. Ninguém consegue alterar esse histórico.
+- Depósitos com prateleiras, lados, andares e posições, classes aceitas em cada um e mapa de ocupação.
+- Materiais com PRN, classe, unidade de controle, equivalência da embalagem, estoque mínimo, criticidade, saldo emergencial, peso, EPI, foto e ficha de segurança.
+- Código de localização no formato D01-P03-LA-A3-Po2, com uma posição por material e sugestão de posição livre seguindo o POP: pesados embaixo, críticos em altura de fácil acesso.
+- Saldo protegido: só muda por movimentação. O ajuste (gestor e master) exige motivo e fica registrado.
+- Busca sem acento e sem símbolos ("8x50" encontra "8 x 50"), filtros por classe, depósito e situação do estoque.
+- Etiquetas com QR em três formatos (100 × 50 mm, 100 × 150 mm com quadro de quantidade e folha A4). O QR abre o material no sistema. O sistema avisa quais etiquetas precisam ser reimpressas quando nome, classe, cor ou endereço mudam.
+- Tudo em tempo real: quando alguém cadastra ou altera algo, as outras telas abertas se atualizam sozinhas, inclusive as listas dentro dos formulários.
 
 ## Perfis
 
@@ -33,10 +43,12 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
+> **Já tem a entrega 1 no ar?** Só rode o `supabase/migrations/0002_materiais.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou.
+
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Tem que terminar sem erro. O script pode ser rodado de novo sem duplicar nada.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `supabase/migrations/0002_materiais.sql`. Os dois têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. O segundo também cria o espaço de arquivos `materiais` (fotos e fichas de segurança) e liga a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -126,9 +138,26 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 2. Em **Usuários**, crie o Jean como Gestor, com senha provisória. Anote a senha mostrada.
 3. Saia e entre como Jean. O sistema pede uma senha nova antes de liberar.
 4. Como Jean, confira que a lista de perfis não oferece Master nem Gestor. Crie um almoxarife e um aprendiz só com matrícula.
-5. Entre como o aprendiz pela matrícula. Ele vê o painel e as classes, sem botões de alteração.
-6. Abra a mesma conta em dois navegadores. O primeiro sai sozinho em até 30 segundos.
+5. Entre como o aprendiz pela matrícula. Ele vê o painel, os materiais e as classes, sem botões de alteração.
+6. Abra a mesma conta em dois navegadores. O primeiro sai sozinho na hora.
 7. Mude a cor de uma classe e veja a alteração em **Histórico**, com o nome de quem mudou.
+8. Em **Depósitos**, cadastre os depósitos reais (1, 4, 5, 6, 7 e 17) com o tamanho de cada um. No D01, marque só a classe Químicos.
+9. Abra **Materiais** em dois computadores. Cadastre um material em um deles e veja aparecer no outro, sem recarregar.
+10. Tente colocar um material elétrico no D01 e um material pesado no último andar: o sistema bloqueia o primeiro e avisa sobre o segundo.
+11. Imprima uma etiqueta em PDF, leia o QR com o celular e confira se abre o material.
+
+## Etiquetas
+
+1. Em **Materiais**, marque os itens na lista e clique em **Imprimir etiquetas**, ou abra um material e use **Imprimir etiqueta**. Sem nada marcado, o botão imprime todas as que estão a reimprimir.
+2. Escolha o formato. Abre uma página com a prévia.
+3. Na janela de impressão do Chrome ou do Edge, deixe as margens em "Nenhuma", a escala em 100% e marque "Gráficos de plano de fundo", senão a faixa da cor não sai. Para PDF, escolha "Salvar como PDF": o arquivo já vem com o nome do material.
+4. Depois de imprimir, as etiquetas ficam marcadas como em dia. Se o nome, a classe, a cor da classe ou o endereço mudarem, o material volta para "a reimprimir".
+
+O QR da etiqueta abre o endereço `.../#/materiais/MAT-000123`. Lido pela câmera do celular, ele abre a ficha do material (depois do login).
+
+## Tempo real
+
+O indicador **Ao vivo**, no topo, mostra que as telas estão recebendo as mudanças na hora. Se aparecer **Reconectando**, a internet caiu ou oscilou; quando volta, a tela recarrega sozinha. O plano gratuito do Supabase aguenta até 200 conexões simultâneas, o que sobra para o almoxarifado.
 
 ## E-mails
 
@@ -162,14 +191,22 @@ src/pages/classes.js               Classes de cor
 src/pages/cadastros.js             Unidades e setores
 src/pages/historico.js             Histórico de alterações
 src/pages/conta.js                 Minha conta
+src/pages/materiais.js             Materiais: lista, cadastro, detalhe, ajuste e etiquetas
+src/pages/depositos.js             Depósitos, regras de peso e mapa de ocupação
+src/lib/materiais.js               Código de localização, situação do estoque e dados da etiqueta
+src/lib/etiquetas.js               Desenho das etiquetas e janela de impressão
+src/lib/arquivos.js                Envio de fotos e PDFs ao Storage
+src/lib/tempoReal.js               Atualização em tempo real das telas
+src/senai.css                      Cores, logo e cantos da identidade SENAI
+public/                            Logo do SENAI (original e branco)
 supabase/migrations/0001_base.sql  Tabelas, permissões, histórico e regras
+supabase/migrations/0002_materiais.sql  Depósitos, materiais, saldo, etiquetas, arquivos e tempo real
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```
 
 ## Próximas entregas
 
-1. Materiais e etiquetas, com PRN, classe, endereço e QR.
-2. Recebimento com foto da nota fiscal, checklist e divergências.
-3. Pedidos, separação e retirada com crachá ou foto.
-4. Relatórios em Excel, relatório semanal e modo offline.
+1. Recebimento com foto da nota fiscal, checklist e divergências. É por ele que o saldo vai entrar.
+2. Pedidos, separação e retirada com crachá ou foto.
+3. Relatórios em Excel, relatório semanal, rotatividade e modo offline.

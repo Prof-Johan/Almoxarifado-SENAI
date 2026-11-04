@@ -12,3 +12,14 @@ export async function criarRegistro(tabela, dados) {
   const { error } = await supabase.from(tabela).insert(dados);
   if (error) throw error;
 }
+
+// O Supabase devolve no máximo 1000 linhas por consulta. Busca em partes.
+export async function buscarTodos(montarConsulta, tamanho = 1000) {
+  const tudo = [];
+  for (let inicio = 0; ; inicio += tamanho) {
+    const { data, error } = await montarConsulta().range(inicio, inicio + tamanho - 1);
+    if (error) throw error;
+    tudo.push(...data);
+    if (data.length < tamanho) return tudo;
+  }
+}

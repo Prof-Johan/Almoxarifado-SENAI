@@ -6,7 +6,7 @@ const raiz = () => $('#raiz');
 
 function cartao(conteudo) {
   return `<div class="auth-layer"><main class="auth-card">
-    <div class="auth-logo" aria-hidden="true">AI</div>
+    <img class="auth-logo-senai" src="/senai-logo.png" alt="SENAI" width="150" height="43">
     ${conteudo}
   </main></div>`;
 }
@@ -56,8 +56,7 @@ export function mostrarLogin(aviso = '', aoEntrar) {
     <button class="auth-link" type="button" id="abrirEsqueci">Esqueci minha senha</button>
     <p class="auth-footer">Não tem acesso? Peça ao gestor do almoxarifado para criar a sua conta.</p>
   `);
-  const base = raiz();
-  ligarMostrarSenha(base);
+  ligarMostrarSenha($('.auth-card'));
   setTimeout(() => $('#login')?.focus(), 30);
 
   $('#formLogin').addEventListener('submit', async e => {
@@ -145,8 +144,7 @@ export function mostrarDefinirSenha(motivo, aoConcluir) {
     </form>
     <button class="auth-link" type="button" id="sairDefinir">Sair</button>
   `);
-  const base = raiz();
-  ligarMostrarSenha(base);
+  ligarMostrarSenha($('.auth-card'));
   setTimeout(() => $('#novaSenha')?.focus(), 30);
   $('#sairDefinir').addEventListener('click', () => sair());
 

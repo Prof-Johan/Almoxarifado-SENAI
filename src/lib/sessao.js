@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { ouvir } from './tempoReal.js';
 
 export const estado = { usuario: null, perfil: null, recuperacao: false };
 
@@ -89,7 +90,8 @@ export function lerAviso() {
   return aviso;
 }
 
-// Confere a cada 30 segundos e ao voltar para a aba.
+// Confere na hora em que a conta entra em outro aparelho ou é bloqueada
+// (tempo real), a cada 30 segundos e ao voltar para a aba.
 export function vigiarSessao() {
   let checando = false;
   const checar = async () => {
@@ -103,6 +105,10 @@ export function vigiarSessao() {
       checando = false;
     }
   };
+  ouvir(['sessoes_ativas', 'perfis'], (_t, mudancas) => {
+    const meuId = estado.perfil?.id;
+    if (meuId && mudancas.some(x => [x.novo?.usuario_id, x.novo?.id, x.antigo?.usuario_id, x.antigo?.id].includes(meuId))) checar();
+  });
   setInterval(checar, 30000);
   window.addEventListener('focus', checar);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checar(); });
