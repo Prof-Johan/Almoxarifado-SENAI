@@ -17,7 +17,8 @@ export async function montar(el, ctx) {
   const operador = nivel(perfil.perfil) >= 3;
 
   async function desenhar() {
-    const [classesR, depositosR, materiais, etiquetas, usuariosAtivos, recebAbertos, recebDiverg] = await Promise.all([
+    await supabase.rpc('expirar_pedidos').then(() => {}, () => {});
+    const [classesR, depositosR, materiais, etiquetas, usuariosAtivos, recebAbertos, recebDiverg, pedAprovar, pedSeparar, pedRetirar] = await Promise.all([
       supabase.from('classes').select('id,nome,cor,numero,removido_em').order('numero'),
       supabase.from('depositos').select('id,numero').is('removido_em', null),
       buscarTodos(() => supabase.from('materiais').select('*').is('removido_em', null).order('id')),
@@ -25,6 +26,9 @@ export async function montar(el, ctx) {
       gestor ? contar('perfis', q => q.is('removido_em', null).eq('ativo', true)) : Promise.resolve(null),
       contar('recebimentos', q => q.in('status', ['CONFERENCIA', 'DIVERGENTE', 'APROVADO'])),
       contar('recebimentos', q => q.eq('status', 'DIVERGENTE')),
+      contar('pedidos', q => q.eq('status', 'AGUARDANDO_APROVACAO')),
+      contar('pedidos', q => q.eq('status', 'PENDENTE')),
+      contar('pedidos', q => q.eq('status', 'SEPARADO')),
     ]);
     if (classesR.error) throw classesR.error;
     if (depositosR.error) throw depositosR.error;
@@ -49,6 +53,8 @@ export async function montar(el, ctx) {
     el.innerHTML = `
       ${cabecalho(`Olá, ${primeiroNome}`, `Você entrou como <b>${esc(PERFIS[perfil.perfil].rotulo)}</b>. ${esc(PERFIS[perfil.perfil].descricao)}`)}
       <div class="painel-numeros">
+        ${operador ? cartao('pedidos', 'Pedidos a separar', pedSeparar, `${pedRetirar} pronto(s) para retirada`, pedSeparar > 0) : cartao('pedidos', nivel(perfil.perfil) === 2 ? 'Meus pedidos abertos' : 'Pedidos abertos', pedAprovar + pedSeparar + pedRetirar, `${pedRetirar} pronto(s) para retirar`)}
+        ${gestor ? cartao('pedidos', 'Aguardando aprovação', pedAprovar, 'Saldo emergencial ou regra ligada', pedAprovar > 0) : ''}
         ${cartao('materiais', 'Materiais', completos.length, 'Cadastrados e ativos')}
         ${cartao('materiais', 'Estoque baixo', baixos.length, 'No mínimo, no emergencial ou zerados', true)}
         ${operador ? cartao('materiais', 'Etiquetas a reimprimir', pendentes, 'Novas ou com dados alterados', true) : ''}
@@ -82,12 +88,8 @@ export async function montar(el, ctx) {
       </section>
 
       <section class="card card-pad painel-bloco">
-        <h2 class="section-title">O que vem a seguir</h2>
-        <p class="section-sub">Materiais, etiquetas e recebimento já estão no sistema. As próximas entregas, nesta ordem:</p>
-        <ol class="proximas">
-          <li><b>Pedidos e retirada.</b> Pedido pelo setor, separação e confirmação por crachá ou foto.</li>
-          <li><b>Relatórios e modo offline.</b> Exportação para Excel, relatório semanal, rotatividade e uso sem internet.</li>
-        </ol>
+        <h2 class="section-title">Atalhos de teclado</h2>
+        <p class="section-sub"><kbd>/</kbd> vai para a busca, <kbd>Alt</kbd>+<kbd>N</kbd> abre um novo cadastro, <kbd>Ctrl</kbd>+<kbd>S</kbd> salva o formulário aberto e <kbd>?</kbd> mostra todos.</p>
       </section>`;
   }
 
@@ -100,7 +102,7 @@ export async function montar(el, ctx) {
     if (alvo) navegar(alvo.dataset.ir);
   });
 
-  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'etiquetas', 'perfis', 'recebimentos'], async () => {
+  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'etiquetas', 'perfis', 'recebimentos', 'pedidos'], async () => {
     if (ctx.ativa()) await desenhar();
   }));
 }

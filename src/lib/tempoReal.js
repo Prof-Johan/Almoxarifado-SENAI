@@ -6,7 +6,8 @@ import { supabase } from './supabase.js';
 const TABELAS = [
   'perfis', 'unidades', 'setores', 'classes', 'configuracoes', 'auditoria',
   'sessoes_ativas', 'depositos', 'materiais', 'movimentacoes', 'etiquetas',
-  'recebimentos', 'recebimento_itens',
+  'recebimentos', 'recebimento_itens', 'pedidos', 'pedido_itens',
+  'inventarios', 'inventario_itens', 'relatorios_semanais',
 ];
 
 const ouvintes = new Set();

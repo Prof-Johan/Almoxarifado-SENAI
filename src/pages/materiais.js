@@ -41,7 +41,10 @@ export async function montar(el, ctx) {
   let unidades = [];
   let config = { pesoPesado: 15, andarMaxPesado: 2 };
   const porId = { classes: new Map(), depositos: new Map(), unidades: new Map(), materiais: new Map() };
-  const filtro = { busca: '', classe: '', deposito: '', situacao: '', etiqueta: false, removidos: false };
+  const filtro = { busca: '', classe: '', deposito: '', situacao: '', etiqueta: false, removidos: false, ordem: 'nome' };
+  let reservas = new Map();
+  let rotacao = new Map();
+  const NIVEIS_ROT = { ALTA: 'Alta', MEDIA: 'Média', BAIXA: 'Baixa' };
   const selecionados = new Set();
 
   async function carregar() {
@@ -54,6 +57,9 @@ export async function montar(el, ctx) {
       supabase.from('configuracoes').select('chave,valor').in('chave', ['peso_pesado_kg', 'andar_maximo_pesado']),
     ]);
     for (const r of [c, d, u, cfg]) if (r.error) throw r.error;
+    const [res, rot] = await Promise.all([supabase.rpc('reservas'), supabase.rpc('rotatividade', { p_dias: 90 })]);
+    reservas = new Map((res.data || []).map(x => [x.material_id, Number(x.reservado)]));
+    rotacao = new Map((rot.data || []).map(x => [x.material_id, x]));
     classes = c.data;
     depositos = d.data;
     unidades = u.data;
@@ -74,7 +80,10 @@ export async function montar(el, ctx) {
         unidade: porId.unidades.get(deposito?.unidade_id),
         local: codigoLocalizacao(deposito?.numero, item.prateleira, item.lado, item.andar, item.posicao),
         etiqueta: etiquetas.get(item.id),
+        reservado: reservas.get(item.id) || 0,
+        rotatividade: rotacao.get(item.id) || { nivel: 'BAIXA', retiradas: 0, quantidade: 0 },
       };
+      completo.disponivel = Math.max(Number(item.saldo) - completo.reservado, 0);
       completo.situacao = situacaoEstoque(completo);
       completo.pendente = !completo.removido_em && etiquetaPendente(completo);
       completo.busca = textoBusca(item.nome, item.prn, item.codigo, item.marca, item.descricao, completo.local, completo.classe?.nome);
@@ -99,6 +108,10 @@ export async function montar(el, ctx) {
       if (filtro.situacao && filtro.situacao !== 'baixo' && m.situacao.id !== filtro.situacao) return false;
       if (filtro.etiqueta && !m.pendente) return false;
       return palavras.every(p => m.busca.includes(p) || m.compacto.includes(p));
+    }).sort((a, b) => {
+      if (filtro.ordem === 'retirados') return b.rotatividade.retiradas - a.rotatividade.retiradas || a.nome.localeCompare(b.nome);
+      if (filtro.ordem === 'saldo') return (a.saldo - a.estoque_minimo) - (b.saldo - b.estoque_minimo);
+      return a.nome.localeCompare(b.nome, 'pt-BR');
     });
   }
 
@@ -147,7 +160,7 @@ export async function montar(el, ctx) {
           </button>
         </td>
         <td><span class="codigo-local">${esc(m.local)}</span><div class="small muted">${esc(m.unidade?.sigla || m.unidade?.nome || '')}</div></td>
-        <td class="col-saldo"><b>${fmtQtd(m.saldo)}</b> <span class="muted">${esc(m.unidade_medida)}</span><div class="small muted">mín. ${fmtQtd(m.estoque_minimo)}</div></td>
+        <td class="col-saldo"><b>${fmtQtd(m.saldo)}</b> <span class="muted">${esc(m.unidade_medida)}</span><div class="small muted">mín. ${fmtQtd(m.estoque_minimo)}${m.reservado ? ` · ${fmtQtd(m.reservado)} reservado` : ''}</div></td>
         <td><span class="pill ${m.situacao.classe}">${m.situacao.rotulo}</span>${m.criticidade === 'ALTA' ? '<div><span class="pill red pill-mini">Crítico</span></div>' : ''}</td>
         ${pode.etiqueta ? `<td>${m.removido_em ? '<span class="pill gray">Removido</span>' : etiquetaStatus(m)}</td>` : ''}
         <td><div class="acoes-linha">
@@ -166,7 +179,9 @@ export async function montar(el, ctx) {
       <select id="fDeposito" aria-label="Filtrar por depósito"><option value="">Todos os depósitos</option>
         ${depositosAtivos.map(d => `<option value="${d.id}" ${filtro.deposito === String(d.id) ? 'selected' : ''}>${esc(porId.unidades.get(d.unidade_id)?.sigla || '')} ${esc(nomeDeposito(d))}</option>`).join('')}</select>
       <select id="fSituacao" aria-label="Filtrar por situação do estoque"><option value="">Qualquer estoque</option>
-        ${Object.entries(SITUACOES).map(([v, t]) => `<option value="${v}" ${filtro.situacao === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+        ${Object.entries(SITUACOES).map(([v, t]) => `<option value="${v}" ${filtro.situacao === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <select id="fOrdem" aria-label="Ordenar">${[['nome', 'Ordem: nome'], ['retirados', 'Ordem: mais retirados'], ['saldo', 'Ordem: mais perto do mínimo']]
+        .map(([v, t]) => `<option value="${v}" ${filtro.ordem === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
   }
 
   function desenhar() {
@@ -294,7 +309,8 @@ export async function montar(el, ctx) {
         <div class="bloco-info"><span>Localização</span><b class="codigo-local grande">${esc(m.local)}</b>
           <small>${esc(m.unidade?.nome || '')} · ${esc(nomeDeposito(m.deposito))} · ${esc(TIPOS_ARMAZENAGEM[m.deposito?.tipo_armazenagem] || '')}</small></div>
         <div class="bloco-info"><span>Saldo</span><b>${fmtQtd(m.saldo)} <small>${esc(m.unidade_medida)}</small></b>
-          <small>Mínimo ${fmtQtd(m.estoque_minimo)}${Number(m.saldo_emergencial) > 0 ? ` · emergencial ${fmtQtd(m.saldo_emergencial)}` : ''}</small></div>
+          <small>Disponível ${fmtQtd(m.disponivel)}${m.reservado ? ` (${fmtQtd(m.reservado)} reservado em pedidos)` : ''} · mínimo ${fmtQtd(m.estoque_minimo)}${Number(m.saldo_emergencial) > 0 ? ` · emergencial ${fmtQtd(m.saldo_emergencial)}` : ''}</small>
+          <small>Rotatividade (90 dias): <b>${NIVEIS_ROT[m.rotatividade.nivel]}</b>, ${m.rotatividade.retiradas} retirada(s)</small></div>
         <div class="bloco-info"><span>Etiqueta</span><b>${!m.etiqueta ? 'Não impressa' : m.pendente ? 'Reimprimir' : 'Em dia'}</b>
           <small>${m.etiqueta ? `Impressa em ${esc(fmtDataHora(m.etiqueta.impressa_em))} por ${esc(m.etiqueta.impressa_por_nome || '')}` : 'Nenhuma etiqueta impressa ainda'}</small></div>
       </div>
@@ -310,6 +326,7 @@ export async function montar(el, ctx) {
       if (pode.editar) botoes.push(`<button class="btn btn-light" type="button" data-det="restaurar">Restaurar</button>`);
     } else {
       if (pode.editar) botoes.push(`<button class="btn btn-ghost" type="button" data-det="remover">Remover</button>`);
+      if (pode.editar) botoes.push(`<button class="btn btn-light" type="button" data-det="devolver">Registrar devolução</button>`);
       if (pode.ajustar) botoes.push(`<button class="btn btn-light" type="button" data-det="ajustar">Ajustar saldo</button>`);
       if (pode.etiqueta) botoes.push(`<button class="btn btn-light" type="button" data-det="etiqueta">Imprimir etiqueta</button>`);
       if (pode.editar) botoes.push(`<button class="btn btn-primary" type="button" data-det="editar">Editar</button>`);
@@ -358,6 +375,7 @@ export async function montar(el, ctx) {
       if (!acao) return;
       if (acao === 'editar') abrirFormulario(m);
       if (acao === 'ajustar') abrirAjuste(m);
+      if (acao === 'devolver') abrirDevolucao(m);
       if (acao === 'etiqueta') abrirImpressao([m]);
       if (acao === 'remover') removerMaterial(m);
       if (acao === 'restaurar') restaurarMaterial(m);
@@ -763,6 +781,36 @@ export async function montar(el, ctx) {
     });
   }
 
+  // Devolução avulsa (sem pedido). Para devolver um item de pedido, use a página Pedidos.
+  function abrirDevolucao(m) {
+    const fundo = abrirModal({
+      titulo: 'Registrar devolução',
+      subtitulo: `${esc(m.codigo)} · ${esc(m.nome)}`,
+      pequeno: true,
+      corpo: `<form id="formDev" novalidate>
+        <div class="fields">
+          <div class="field"><label for="dQtd">Quantidade devolvida (${esc(m.unidade_medida)}) *</label><input id="dQtd" type="number" min="0" step="any"></div>
+          <div class="field wide"><label for="dMotivo">Motivo *</label><input id="dMotivo" maxlength="160" placeholder="Ex.: sobrou na manutenção da linha 2"></div>
+        </div>
+        <p class="small muted">Se o material saiu por um pedido, prefira devolver pelo próprio pedido, na página Pedidos.</p>
+        <p class="form-erro" id="dErro" role="alert" hidden></p>
+      </form>`,
+      rodape: `<button class="btn btn-ghost" type="button" data-fechar>Cancelar</button><button class="btn btn-primary" type="submit" form="formDev">Registrar devolução</button>`,
+    });
+    $('#formDev', fundo).addEventListener('submit', async e => {
+      e.preventDefault();
+      await executando(e.submitter, async () => {
+        const { error } = await supabase.rpc('registrar_devolucao', { p_material: m.id, p_quantidade: Number($('#dQtd', fundo).value), p_motivo: $('#dMotivo', fundo).value });
+        if (error) { const x = $('#dErro', fundo); x.textContent = erroAmigavel(error); x.hidden = false; return; }
+        fecharModal(true);
+        toast('Devolução registrada. O saldo voltou para o estoque.');
+        await carregar();
+        atualizarLista();
+        abrirDetalhe(m.id);
+      });
+    });
+  }
+
   async function removerMaterial(m) {
     if (Number(m.saldo) > 0) {
       return toast(`Este material ainda tem saldo de ${fmtQtd(m.saldo)} ${m.unidade_medida}. Zere o saldo com um ajuste antes de remover.`, 'erro');
@@ -859,6 +907,7 @@ export async function montar(el, ctx) {
     if (id === 'fDeposito') filtro.deposito = e.target.value;
     if (id === 'fSituacao') { filtro.situacao = e.target.value; filtro.etiqueta = false; }
     if (id === 'fRemovidos') filtro.removidos = e.target.checked;
+    if (id === 'fOrdem') filtro.ordem = e.target.value;
     if (id === 'selecionarTodos') {
       filtrados().filter(x => !x.removido_em).forEach(x => (e.target.checked ? selecionados.add(x.id) : selecionados.delete(x.id)));
     }
@@ -868,7 +917,7 @@ export async function montar(el, ctx) {
       else selecionados.delete(Number(marcar));
       return atualizarContagem();
     }
-    if (['fClasse', 'fDeposito', 'fSituacao', 'fRemovidos', 'selecionarTodos'].includes(id)) atualizarLista();
+    if (['fClasse', 'fDeposito', 'fSituacao', 'fRemovidos', 'fOrdem', 'selecionarTodos'].includes(id)) atualizarLista();
   });
   el.addEventListener('click', e => {
     const resumoBotao = e.target.closest('[data-resumo]');
@@ -891,7 +940,7 @@ export async function montar(el, ctx) {
   });
 
   // Tempo real na lista.
-  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'unidades', 'etiquetas', 'configuracoes'], async tabelas => {
+  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'unidades', 'etiquetas', 'configuracoes', 'pedidos', 'pedido_itens'], async tabelas => {
     if (!ctx.ativa()) return;
     await carregar();
     if (tabelas.has('classes') || tabelas.has('depositos') || tabelas.has('unidades')) atualizarFiltros();

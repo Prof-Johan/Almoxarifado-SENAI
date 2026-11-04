@@ -17,14 +17,22 @@ import { abrirMinhaConta } from './pages/conta.js';
 import { iniciarTempoReal, ouvir, aoMudarConexao } from './lib/tempoReal.js';
 import { aplicarTema } from './lib/tema.js';
 import * as recebimentos from './pages/recebimentos.js';
+import * as pedidos from './pages/pedidos.js';
+import * as inventarios from './pages/inventarios.js';
+import * as relatorios from './pages/relatorios.js';
+import { mostrarAtalhos } from './lib/atalhos.js';
+import { iniciarOffline } from './lib/offline.js';
 
 // Páginas e o nível mínimo de perfil para ver cada uma.
 const ROTAS = {
   painel: { rotulo: 'Painel', titulo: 'Visão geral', nivel: 1, pagina: painel },
+  pedidos: { rotulo: 'Pedidos', titulo: 'Pedidos e retirada', nivel: 1, pagina: pedidos },
   materiais: { rotulo: 'Materiais', titulo: 'Materiais', nivel: 1, pagina: materiais },
   recebimentos: { rotulo: 'Recebimento', titulo: 'Recebimento de materiais', nivel: 1, pagina: recebimentos },
+  inventarios: { rotulo: 'Inventário', titulo: 'Inventário periódico', nivel: 1, pagina: inventarios },
   depositos: { rotulo: 'Depósitos', titulo: 'Depósitos e endereços', nivel: 1, pagina: depositos },
   classes: { rotulo: 'Classes e cores', titulo: 'Classes de materiais', nivel: 1, pagina: classes },
+  relatorios: { rotulo: 'Relatórios', titulo: 'Relatórios', nivel: 3, pagina: relatorios },
   usuarios: { rotulo: 'Usuários', titulo: 'Usuários e acessos', nivel: 4, pagina: usuarios },
   cadastros: { rotulo: 'Unidades e setores', titulo: 'Unidades e setores', nivel: 4, pagina: cadastros },
   historico: { rotulo: 'Histórico', titulo: 'Histórico de alterações', nivel: 4, pagina: historico },
@@ -54,7 +62,7 @@ function montarLayout() {
           <h1>Almoxarifado Inteligente</h1><small>Projeto SENAI · Klabin</small>
         </div>
         <nav class="nav" id="nav" aria-label="Menu principal"></nav>
-        <div class="sidebar-foot">Versão em desenvolvimento. Pedidos e retirada entram na próxima entrega.</div>
+        <div class="sidebar-foot">Atalhos: <kbd>/</kbd> busca, <kbd>Alt</kbd>+<kbd>N</kbd> novo, <kbd>Ctrl</kbd>+<kbd>S</kbd> salvar. <button type="button" class="link-atalhos" id="btnAtalhos">Ver todos</button></div>
       </aside>
       <div class="main">
         <header class="topbar">
@@ -81,6 +89,7 @@ function montarLayout() {
   $('#mobileNav').addEventListener('change', e => navegar(e.target.value));
   $('#btnConta').addEventListener('click', () => abrirMinhaConta());
   $('#btnSair').addEventListener('click', () => sair());
+  $('#btnAtalhos').addEventListener('click', mostrarAtalhos);
   aplicarTema();
   aoMudarConexao(conectado => {
     const marca = $('#aoVivo');
@@ -182,6 +191,7 @@ async function abrirSistema() {
 
 async function iniciar() {
   aplicarTema();
+  iniciarOffline();
   if (!configurado) {
     mostrarSemConfiguracao();
     return;

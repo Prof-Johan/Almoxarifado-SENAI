@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { ouvir } from './tempoReal.js';
+import { limparDadosOffline } from './offline.js';
 
 export const estado = { usuario: null, perfil: null, recuperacao: false };
 
@@ -39,17 +40,31 @@ export async function entrar(login, senha) {
 }
 
 export async function carregarPerfil() {
-  const { data: { user } } = await supabase.auth.getUser();
-  estado.usuario = user || null;
-  if (!user) { estado.perfil = null; return null; }
-  const { data, error } = await supabase
-    .from('perfis')
-    .select('*, unidade:unidades(nome), setor:setores(nome)')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (error) throw error;
-  estado.perfil = data;
-  return data;
+  try {
+    const { data: { user }, error: erroUsuario } = await supabase.auth.getUser();
+    if (erroUsuario && /fetch|network/i.test(erroUsuario.message)) throw erroUsuario;
+    estado.usuario = user || null;
+    if (!user) { estado.perfil = null; return null; }
+    const { data, error } = await supabase
+      .from('perfis')
+      .select('*, unidade:unidades(nome), setor:setores(nome)')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (error) throw error;
+    estado.perfil = data;
+    if (data) localStorage.setItem('almox-perfil', JSON.stringify(data));
+    return data;
+  } catch (erro) {
+    // Sem internet: continua com o último perfil salvo neste aparelho, só para consulta.
+    const salvo = JSON.parse(localStorage.getItem('almox-perfil') || 'null');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!navigator.onLine && salvo && session?.user?.id === salvo.id) {
+      estado.usuario = session.user;
+      estado.perfil = salvo;
+      return salvo;
+    }
+    throw erro;
+  }
 }
 
 function descreverDispositivo() {
@@ -79,6 +94,7 @@ export async function verificarSessao() {
 
 export async function sair(aviso = '') {
   localStorage.removeItem(CHAVE_SESSAO);
+  await limparDadosOffline();
   if (aviso) sessionStorage.setItem(CHAVE_AVISO, aviso);
   try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* já saiu */ }
   window.location.replace(window.location.pathname);

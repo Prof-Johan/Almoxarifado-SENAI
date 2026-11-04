@@ -7,6 +7,8 @@ import { UNIDADES_MEDIDA, CRITICIDADES, TIPOS_ARMAZENAGEM, nomeDeposito } from '
 const POR_PAGINA = 50;
 
 const AREAS = {
+  pedidos: 'Pedidos',
+  inventarios: 'Inventários',
   recebimentos: 'Recebimentos',
   materiais: 'Materiais',
   depositos: 'Depósitos',
@@ -80,14 +82,25 @@ const CAMPOS = {
   divergencia: 'Divergência',
   evidencias: 'Evidências',
   cancelado_motivo: 'Motivo do cancelamento',
+  motivo_encerramento: 'Motivo',
+  recebedor_nome: 'Retirado por',
+  retirado_em: 'Retirada',
+  retirada_metodo: 'Confirmação da retirada',
+  aprovado_em: 'Aprovação',
+  usa_emergencial: 'Usa saldo emergencial',
+  prazo_retirada: 'Prazo para retirar',
+  ajustes_aplicados: 'Ajustes aplicados',
 };
 
 const STATUS_RECEBIMENTO = {
   CONFERENCIA: 'Em conferência', DIVERGENTE: 'Com divergência', APROVADO: 'Aprovado, aguardando guarda',
-  GUARDADO: 'Guardado', CANCELADO: 'Cancelado',
+  GUARDADO: 'Guardado', CANCELADO: 'Cancelado', AGUARDANDO_APROVACAO: 'Aguardando aprovação', PENDENTE: 'A separar',
+  SEPARADO: 'Pronto para retirada', RETIRADO: 'Retirado', EXPIRADO: 'Prazo vencido', RECUSADO: 'Recusado',
+  ABERTO: 'Em contagem', CONCLUIDO: 'Concluído',
 };
 // Campos internos que não precisam aparecer no histórico.
-const OCULTOS = new Set(['conferido_por', 'conferido_por_nome', 'conferido_em', 'aprovado_por', 'aprovado_por_nome', 'aprovado_em',
+const OCULTOS = new Set(['aprovado_por', 'separado_por', 'separado_por_nome', 'separado_em', 'entregue_por', 'entregue_por_nome', 'recebedor_id',
+  'retirada_foto_path', 'solicitante_id', 'solicitante_nome', 'concluido_por', 'concluido_por_nome', 'concluido_em', 'aberto_por_nome', 'conferido_por', 'conferido_por_nome', 'conferido_em', 'aprovado_por', 'aprovado_por_nome', 'aprovado_em',
   'guardado_por', 'guardado_por_nome', 'guardado_em', 'recebido_por_nome', 'numero']);
 
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -141,6 +154,9 @@ export async function montar(el, ctx) {
     if (campo === 'checklist') { const marcados = Object.values(valor || {}).filter(Boolean).length; return `${marcados} de 7 marcados`; }
     if (campo === 'evidencias') return `${(valor || []).length} foto(s)`;
     if (campo === 'nf_arquivo_path') return 'arquivo enviado';
+    if (['retirado_em', 'aprovado_em', 'prazo_retirada'].includes(campo)) return esc(fmtDataHora(valor));
+    if (campo === 'retirada_metodo') return valor === 'CRACHA' ? 'Crachá' : 'Foto';
+    if (campo === 'usa_emergencial') return valor ? 'Sim' : 'Não';
     if (campo === 'nf_data') return esc(fmtData(valor + 'T12:00:00'));
     if (campo === 'classe_id') return esc(nomes.classes.get(String(valor)) || `nº ${valor}`);
     if (campo === 'deposito_id') return esc(nomes.depositos.get(String(valor)) || `nº ${valor}`);
@@ -163,6 +179,7 @@ export async function montar(el, ctx) {
       const partes = [];
       if (r.tabela === 'perfis') partes.push(`Perfil ${esc(rotuloPerfil(d.perfil))}`);
       if (r.tabela === 'classes') partes.push(`Cor ${valorLegivel('cor', d.cor)}`);
+      if (r.tabela === 'pedidos') partes.push(`Solicitante ${esc(d.solicitante_nome || '')}`);
       if (r.tabela === 'recebimentos') partes.push(`NF ${esc(d.nf_numero || '')} · ${esc(d.fornecedor || '')}`);
       if (r.tabela === 'materiais') partes.push(`${esc(d.codigo || '')} · PRN ${esc(d.prn || '')}`);
       if (r.tabela === 'depositos') partes.push(`${d.prateleiras} prateleiras · ${d.andares} andares · ${d.posicoes} posições`);
@@ -177,7 +194,7 @@ export async function montar(el, ctx) {
   function nomeRegistro(r) {
     const d = r.depois || r.antes || {};
     if (r.tabela === 'depositos') return esc(nomeDeposito(d));
-    if (r.tabela === 'recebimentos') return esc(d.numero || `Recebimento ${r.registro_id}`);
+    if (['recebimentos', 'pedidos', 'inventarios'].includes(r.tabela)) return esc(d.numero || `Registro ${r.registro_id}`);
     return esc(d.nome || d.chave || `Registro ${r.registro_id}`);
   }
 

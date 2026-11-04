@@ -424,3 +424,32 @@ button.chip-material:hover { border-color: var(--senai-azul); }
 [data-tema="escuro"] .previa-local span,
 [data-tema="escuro"] .dica { color: #9bacc2; }
 [data-tema="escuro"] .ficha dd { color: var(--ink); }
+
+/* =====================================================================
+   Pedidos, inventário, relatórios, offline e atalhos
+   ===================================================================== */
+.linha-pedido { display: grid; grid-template-columns: 1fr 110px 260px auto; gap: 8px; align-items: center; margin-bottom: 10px; }
+.linha-pedido .item-info { grid-column: 1 / -1; margin-top: -4px; }
+.linha-pedido input.invalido { border-color: #c8363f; }
+.resumo-pedido { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; }
+.ficha-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.painel-retirada { margin-top: 18px; border: 2px solid var(--senai-azul); border-radius: 6px; padding: 16px; background: var(--senai-azul-claro); }
+.painel-retirada h3 { font-size: 16px; color: var(--senai-azul-escuro); }
+.painel-retirada #retCracha { font-size: 18px; font-family: Consolas, "Courier New", monospace; }
+.abas { display: flex; gap: 6px; margin: 12px 0; }
+.aba { border: 1px solid var(--line); background: var(--card, #fff); color: var(--ink); border-radius: 4px; padding: 8px 14px; font-weight: 700; }
+.aba.ativa { background: var(--senai-azul); border-color: var(--senai-azul); color: #fff; }
+.grade-relatorios { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.cartao-relatorio { border: 1px solid var(--line); border-top: 4px solid var(--senai-azul); border-radius: 6px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+.faixa-offline { position: sticky; top: 0; z-index: 50; background: #c8363f; color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 12px; }
+kbd { display: inline-block; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; font: 700 11px Consolas, monospace; background: var(--card, #fff); color: var(--ink); }
+.sidebar-foot kbd { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .3); color: #fff; }
+.link-atalhos { border: 0; background: none; color: #fff; text-decoration: underline; padding: 0; font: inherit; cursor: pointer; }
+[data-tema="escuro"] .painel-retirada { background: #16243b; border-color: #3a6cc0; }
+[data-tema="escuro"] .painel-retirada h3 { color: #e6eefc; }
+[data-tema="escuro"] .cartao-relatorio { background: #16243b; }
+@media (max-width: 900px) {
+  .linha-pedido { grid-template-columns: 1fr 90px auto; }
+  .linha-pedido .item-cat { grid-column: 1 / -1; }
+  .ficha-3 { grid-template-columns: 1fr; }
+}

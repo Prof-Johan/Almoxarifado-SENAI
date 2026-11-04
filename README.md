@@ -5,6 +5,7 @@ Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com 
 - **Entrega 1:** login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
 - **Entrega 2:** depósitos e endereços, materiais, saldo com movimentações, etiquetas com QR, fotos, atualização em tempo real e identidade visual do SENAI.
 - **Entrega 3:** recebimento com nota fiscal (validação simulada), conferência com checklist do POP, divergência com fotos, aprovação com entrada no estoque, liberação para guarda e modo noturno.
+- **Entrega 4 (versão completa):** pedidos pelo setor, aprovação, separação por endereço, retirada com crachá ou foto, devolução, prazo de retirada, inventário periódico, relatórios em Excel, relatório semanal automático, rotatividade, modo offline e atalhos de teclado.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
 
@@ -28,6 +29,15 @@ O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo
 - Recebimento no fluxo do POP: recebimento, conferência e etiquetagem, revisão, entrada no estoque e guarda. A nota fiscal é anexada como arquivo (PDF, foto ou XML) e a validação é simulada. A mesma nota do mesmo fornecedor não entra duas vezes.
 - Conferência com quantidade conferida por item, diferença calculada na hora e checklist de 7 itens. Sem nota anexada, sem conferência completa ou sem checklist, o sistema não aprova.
 - Divergência com descrição e fotos. Com divergência, só gestor ou master aprovam, e entra no estoque a quantidade conferida.
+- Pedidos no fluxo SAI+: o solicitante pede pelo computador ou celular, informando setor e motivo de cada item (uso comum, reposição de perdido ou de item sem condições). O sistema mostra o disponível (saldo menos o que já está reservado em pedidos), o peso total e o EPI necessário.
+- Saldo emergencial: um pedido que avança sobre ele vai para a aprovação do gestor. O gestor também pode ligar a regra "todo pedido precisa de aprovação" e mudar o prazo de retirada (7 dias por padrão).
+- Separação com a lista na ordem do endereço e retirada só com crachá cadastrado ou foto de quem leva. Leitores USB de crachá funcionam como teclado; no Android, dá para ler pelo NFC do celular. Pedido não retirado no prazo vence e libera o saldo reservado.
+- Devolução pelo pedido ou avulsa, sempre registrada como movimentação.
+- Inventário por depósito, com contagem às cegas, divergências, exportação e ajuste autorizado pelo gestor.
+- Relatórios em Excel: estoque atual, movimentações, pedidos, recebimentos e divergências, rotatividade e relatório semanal.
+- Rotatividade em três níveis (alta, média e baixa) pelas retiradas dos últimos 90 dias, na ficha do material e nos relatórios.
+- Modo offline: o sistema pode ser instalado no celular ou no computador e, sem internet, as consultas usam os últimos dados salvos no aparelho. Para gravar, precisa de conexão. Ao sair, os dados salvos são apagados.
+- Atalhos de teclado: `/` busca, `Alt+N` novo cadastro, `Ctrl+S` salvar, `Esc` fechar e `?` lista todos.
 - Modo noturno, no botão do topo ou do login. A escolha fica salva no aparelho; sem escolha, segue o modo do celular ou do computador.
 
 ## Perfis
@@ -48,12 +58,12 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 2 no ar?** Só rode o `supabase/migrations/0003_recebimento.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver na entrega 1, rode antes o `0002_materiais.sql`.
+> **Já tem a entrega 3 no ar?** Só rode o `supabase/migrations/0004_pedidos_relatorios.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
 
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql` e `0003_recebimento.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql` e `0004_pedidos_relatorios.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -153,6 +163,11 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 12. Em **Recebimento**, registre uma nota com dois itens anexando qualquer PDF. Confira as quantidades, marque o checklist e aprove. O saldo dos materiais sobe e a entrada aparece nas movimentações.
 13. Faça outro recebimento com uma quantidade menor que a da nota. Como almoxarife, o sistema não deixa aprovar: registre a divergência com uma foto. Entre como gestor e aprove com o conferido.
 14. Troque para o modo noturno e confira as telas.
+15. Cadastre um crachá no usuário solicitante. Entre como ele e faça um pedido. Como almoxarife, separe e confirme a retirada digitando o crachá. O saldo cai e o pedido aparece como retirado.
+16. Peça uma quantidade que use o saldo emergencial e confira que o pedido vai para o gestor.
+17. Abra um inventário de um depósito, conte um item com diferença e conclua como gestor. O saldo é ajustado e o ajuste aparece nas movimentações.
+18. Em Relatórios, gere o relatório semanal e baixe os arquivos em Excel.
+19. Com o sistema aberto, desligue a internet: aparece a faixa vermelha e as consultas continuam com os últimos dados.
 
 ## Etiquetas
 
@@ -162,6 +177,18 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 4. Depois de imprimir, as etiquetas ficam marcadas como em dia. Se o nome, a classe, a cor da classe ou o endereço mudarem, o material volta para "a reimprimir".
 
 O QR da etiqueta abre o endereço `.../#/materiais/MAT-000123`. Lido pela câmera do celular, ele abre a ficha do material (depois do login).
+
+## Tarefas automáticas
+
+Para o relatório semanal sair sozinho toda segunda às 7h e os pedidos vencidos serem encerrados a cada hora, ative a extensão **pg_cron** no Supabase (Database > Extensions) e rode o `0004_pedidos_relatorios.sql` de novo. Sem o pg_cron, tudo continua funcionando: os pedidos vencem quando alguém abre a página de pedidos, e o relatório da semana sai pelo botão "Gerar agora".
+
+## Crachá
+
+Cadastre no usuário o número do crachá do jeito que o leitor mostra. O sistema ignora espaços, dois-pontos e diferença de maiúsculas, então "04:A1:B2" e "04a1b2" valem o mesmo. Leitores USB funcionam como teclado: o número aparece no campo da retirada e o Enter confirma. No celular Android com Chrome, o botão "Ler pelo celular (NFC)" usa o NFC do aparelho.
+
+## Instalar como aplicativo
+
+No Chrome ou no Edge, use "Instalar aplicativo" no menu do navegador. No Android, "Adicionar à tela inicial". O sistema abre em janela própria e funciona para consulta mesmo sem internet.
 
 ## Tempo real
 
@@ -202,6 +229,12 @@ src/pages/conta.js                 Minha conta
 src/pages/materiais.js             Materiais: lista, cadastro, detalhe, ajuste e etiquetas
 src/pages/depositos.js             Depósitos, regras de peso e mapa de ocupação
 src/pages/recebimentos.js          Recebimento, conferência, divergência e guarda
+src/pages/pedidos.js               Pedidos, aprovação, separação, retirada e devolução
+src/pages/inventarios.js           Inventário periódico
+src/pages/relatorios.js            Relatórios em Excel, semanal e rotatividade
+src/lib/excel.js                   Geração dos arquivos .xlsx
+src/lib/offline.js                 Modo offline e faixa sem internet
+src/lib/atalhos.js                 Atalhos de teclado
 src/lib/tema.js                    Modo noturno
 src/lib/materiais.js               Código de localização, situação do estoque e dados da etiqueta
 src/lib/etiquetas.js               Desenho das etiquetas e janela de impressão
@@ -212,12 +245,11 @@ public/                            Logo do SENAI (original e branco)
 supabase/migrations/0001_base.sql  Tabelas, permissões, histórico e regras
 supabase/migrations/0002_materiais.sql  Depósitos, materiais, saldo, etiquetas, arquivos e tempo real
 supabase/migrations/0003_recebimento.sql  Recebimento, conferência, divergência e entrada no estoque
+supabase/migrations/0004_pedidos_relatorios.sql  Pedidos, retirada, devolução, inventário, rotatividade e relatório semanal
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```
 
-## Próximas entregas
+## Próximos passos
 
-1. Pedidos, separação e retirada com crachá ou foto, devolução e prazo de 7 dias.
-2. Relatórios em Excel, relatório semanal, rotatividade e modo offline.
-3. Quando houver nota fiscal real: leitura da chave de acesso e validação de verdade.
+Esta é a versão com todas as funcionalidades levantadas. A partir daqui, os ajustes vêm dos testes da turma. Quando houver nota fiscal real, dá para trocar a validação simulada pela leitura da chave de acesso.
