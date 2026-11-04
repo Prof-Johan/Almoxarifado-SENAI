@@ -15,11 +15,14 @@ import * as materiais from './pages/materiais.js';
 import * as depositos from './pages/depositos.js';
 import { abrirMinhaConta } from './pages/conta.js';
 import { iniciarTempoReal, ouvir, aoMudarConexao } from './lib/tempoReal.js';
+import { aplicarTema } from './lib/tema.js';
+import * as recebimentos from './pages/recebimentos.js';
 
 // Páginas e o nível mínimo de perfil para ver cada uma.
 const ROTAS = {
   painel: { rotulo: 'Painel', titulo: 'Visão geral', nivel: 1, pagina: painel },
   materiais: { rotulo: 'Materiais', titulo: 'Materiais', nivel: 1, pagina: materiais },
+  recebimentos: { rotulo: 'Recebimento', titulo: 'Recebimento de materiais', nivel: 1, pagina: recebimentos },
   depositos: { rotulo: 'Depósitos', titulo: 'Depósitos e endereços', nivel: 1, pagina: depositos },
   classes: { rotulo: 'Classes e cores', titulo: 'Classes de materiais', nivel: 1, pagina: classes },
   usuarios: { rotulo: 'Usuários', titulo: 'Usuários e acessos', nivel: 4, pagina: usuarios },
@@ -51,7 +54,7 @@ function montarLayout() {
           <h1>Almoxarifado Inteligente</h1><small>Projeto SENAI · Klabin</small>
         </div>
         <nav class="nav" id="nav" aria-label="Menu principal"></nav>
-        <div class="sidebar-foot">Versão em desenvolvimento. Recebimento e pedidos entram nas próximas entregas.</div>
+        <div class="sidebar-foot">Versão em desenvolvimento. Pedidos e retirada entram na próxima entrega.</div>
       </aside>
       <div class="main">
         <header class="topbar">
@@ -62,6 +65,7 @@ function montarLayout() {
           <div class="account-toolbar">
             <span class="ao-vivo" id="aoVivo" title="Conectando..."><span class="ponto"></span><span class="texto">Conectando</span></span>
             <span class="account-user">${esc(p.nome)} · ${esc(rotuloPerfil(p.perfil))}</span>
+            <button class="btn btn-ghost" type="button" data-alternar-tema aria-pressed="false">Modo noturno</button>
             <button class="btn btn-ghost" type="button" id="btnConta">Minha conta</button>
             <button class="btn btn-ghost" type="button" id="btnSair">Sair</button>
           </div>
@@ -77,6 +81,7 @@ function montarLayout() {
   $('#mobileNav').addEventListener('change', e => navegar(e.target.value));
   $('#btnConta').addEventListener('click', () => abrirMinhaConta());
   $('#btnSair').addEventListener('click', () => sair());
+  aplicarTema();
   aoMudarConexao(conectado => {
     const marca = $('#aoVivo');
     if (!marca) return;
@@ -176,6 +181,7 @@ async function abrirSistema() {
 }
 
 async function iniciar() {
+  aplicarTema();
   if (!configurado) {
     mostrarSemConfiguracao();
     return;

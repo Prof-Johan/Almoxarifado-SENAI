@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import { $, esc, cabecalho, fmtDataHora, erroAmigavel, toast, contraste } from '../lib/ui.js';
+import { $, esc, cabecalho, fmtDataHora, fmtData, erroAmigavel, toast, contraste } from '../lib/ui.js';
 import { rotuloPerfil } from '../lib/permissoes.js';
 import { ouvir } from '../lib/tempoReal.js';
 import { UNIDADES_MEDIDA, CRITICIDADES, TIPOS_ARMAZENAGEM, nomeDeposito } from '../lib/materiais.js';
@@ -7,6 +7,7 @@ import { UNIDADES_MEDIDA, CRITICIDADES, TIPOS_ARMAZENAGEM, nomeDeposito } from '
 const POR_PAGINA = 50;
 
 const AREAS = {
+  recebimentos: 'Recebimentos',
   materiais: 'Materiais',
   depositos: 'Depósitos',
   perfis: 'Usuários',
@@ -67,7 +68,27 @@ const CAMPOS = {
   posicoes: 'Posições por andar',
   tipo_armazenagem: 'Tipo de armazenagem',
   classes_permitidas: 'Classes aceitas',
+  status: 'Situação',
+  fornecedor: 'Fornecedor',
+  nf_numero: 'Número da nota',
+  nf_serie: 'Série',
+  nf_data: 'Emissão da nota',
+  nf_arquivo_path: 'Arquivo da nota',
+  nf_arquivo_nome: 'Nome do arquivo da nota',
+  observacao: 'Observação',
+  checklist: 'Checklist',
+  divergencia: 'Divergência',
+  evidencias: 'Evidências',
+  cancelado_motivo: 'Motivo do cancelamento',
 };
+
+const STATUS_RECEBIMENTO = {
+  CONFERENCIA: 'Em conferência', DIVERGENTE: 'Com divergência', APROVADO: 'Aprovado, aguardando guarda',
+  GUARDADO: 'Guardado', CANCELADO: 'Cancelado',
+};
+// Campos internos que não precisam aparecer no histórico.
+const OCULTOS = new Set(['conferido_por', 'conferido_por_nome', 'conferido_em', 'aprovado_por', 'aprovado_por_nome', 'aprovado_em',
+  'guardado_por', 'guardado_por_nome', 'guardado_em', 'recebido_por_nome', 'numero']);
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const diasAtras = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
@@ -116,6 +137,11 @@ export async function montar(el, ctx) {
     if (campo === 'perfil') return esc(rotuloPerfil(valor));
     if (campo === 'unidade_id') return esc(nomes.unidades.get(String(valor)) || `nº ${valor}`);
     if (campo === 'setor_id') return esc(nomes.setores.get(String(valor)) || `nº ${valor}`);
+    if (campo === 'status') return esc(STATUS_RECEBIMENTO[valor] || valor);
+    if (campo === 'checklist') { const marcados = Object.values(valor || {}).filter(Boolean).length; return `${marcados} de 7 marcados`; }
+    if (campo === 'evidencias') return `${(valor || []).length} foto(s)`;
+    if (campo === 'nf_arquivo_path') return 'arquivo enviado';
+    if (campo === 'nf_data') return esc(fmtData(valor + 'T12:00:00'));
     if (campo === 'classe_id') return esc(nomes.classes.get(String(valor)) || `nº ${valor}`);
     if (campo === 'deposito_id') return esc(nomes.depositos.get(String(valor)) || `nº ${valor}`);
     if (campo === 'criticidade') return esc(CRITICIDADES[valor]?.rotulo || valor);
@@ -137,12 +163,13 @@ export async function montar(el, ctx) {
       const partes = [];
       if (r.tabela === 'perfis') partes.push(`Perfil ${esc(rotuloPerfil(d.perfil))}`);
       if (r.tabela === 'classes') partes.push(`Cor ${valorLegivel('cor', d.cor)}`);
+      if (r.tabela === 'recebimentos') partes.push(`NF ${esc(d.nf_numero || '')} · ${esc(d.fornecedor || '')}`);
       if (r.tabela === 'materiais') partes.push(`${esc(d.codigo || '')} · PRN ${esc(d.prn || '')}`);
       if (r.tabela === 'depositos') partes.push(`${d.prateleiras} prateleiras · ${d.andares} andares · ${d.posicoes} posições`);
       return partes.length ? partes.join(' · ') : '<span class="muted">Cadastro criado</span>';
     }
     if (r.acao === 'EXCLUIU') return '<span class="muted">Registro apagado</span>';
-    const campos = (r.campos || []).filter(c => c !== 'removido_em' || r.acao === 'EDITOU');
+    const campos = (r.campos || []).filter(c => (c !== 'removido_em' || r.acao === 'EDITOU') && !OCULTOS.has(c));
     if (!campos.length) return '<span class="muted">Sem outras alterações</span>';
     return `<ul class="mudancas">${campos.map(c => `<li><b>${esc(CAMPOS[c] || c)}:</b> ${valorLegivel(c, r.antes?.[c])} <span aria-label="para">→</span> ${valorLegivel(c, r.depois?.[c])}</li>`).join('')}</ul>`;
   }
@@ -150,6 +177,7 @@ export async function montar(el, ctx) {
   function nomeRegistro(r) {
     const d = r.depois || r.antes || {};
     if (r.tabela === 'depositos') return esc(nomeDeposito(d));
+    if (r.tabela === 'recebimentos') return esc(d.numero || `Recebimento ${r.registro_id}`);
     return esc(d.nome || d.chave || `Registro ${r.registro_id}`);
   }
 

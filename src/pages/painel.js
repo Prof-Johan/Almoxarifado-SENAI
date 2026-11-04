@@ -17,12 +17,14 @@ export async function montar(el, ctx) {
   const operador = nivel(perfil.perfil) >= 3;
 
   async function desenhar() {
-    const [classesR, depositosR, materiais, etiquetas, usuariosAtivos] = await Promise.all([
+    const [classesR, depositosR, materiais, etiquetas, usuariosAtivos, recebAbertos, recebDiverg] = await Promise.all([
       supabase.from('classes').select('id,nome,cor,numero,removido_em').order('numero'),
       supabase.from('depositos').select('id,numero').is('removido_em', null),
       buscarTodos(() => supabase.from('materiais').select('*').is('removido_em', null).order('id')),
       buscarTodos(() => supabase.from('etiquetas').select('material_id,dados').order('material_id')),
       gestor ? contar('perfis', q => q.is('removido_em', null).eq('ativo', true)) : Promise.resolve(null),
+      contar('recebimentos', q => q.in('status', ['CONFERENCIA', 'DIVERGENTE', 'APROVADO'])),
+      contar('recebimentos', q => q.eq('status', 'DIVERGENTE')),
     ]);
     if (classesR.error) throw classesR.error;
     if (depositosR.error) throw depositosR.error;
@@ -50,6 +52,7 @@ export async function montar(el, ctx) {
         ${cartao('materiais', 'Materiais', completos.length, 'Cadastrados e ativos')}
         ${cartao('materiais', 'Estoque baixo', baixos.length, 'No mínimo, no emergencial ou zerados', true)}
         ${operador ? cartao('materiais', 'Etiquetas a reimprimir', pendentes, 'Novas ou com dados alterados', true) : ''}
+        ${cartao('recebimentos', 'Recebimentos abertos', recebAbertos, recebDiverg ? `${recebDiverg} com divergência` : 'Em conferência ou aguardando guarda', recebDiverg > 0)}
         ${gestor ? cartao('usuarios', 'Usuários ativos', usuariosAtivos, 'Com acesso liberado') : ''}
       </div>
 
@@ -80,9 +83,8 @@ export async function montar(el, ctx) {
 
       <section class="card card-pad painel-bloco">
         <h2 class="section-title">O que vem a seguir</h2>
-        <p class="section-sub">Materiais e etiquetas já estão no sistema. As próximas entregas, nesta ordem:</p>
+        <p class="section-sub">Materiais, etiquetas e recebimento já estão no sistema. As próximas entregas, nesta ordem:</p>
         <ol class="proximas">
-          <li><b>Recebimento.</b> Conferência com foto da nota fiscal, checklist e registro de divergências.</li>
           <li><b>Pedidos e retirada.</b> Pedido pelo setor, separação e confirmação por crachá ou foto.</li>
           <li><b>Relatórios e modo offline.</b> Exportação para Excel, relatório semanal, rotatividade e uso sem internet.</li>
         </ol>
@@ -98,7 +100,7 @@ export async function montar(el, ctx) {
     if (alvo) navegar(alvo.dataset.ir);
   });
 
-  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'etiquetas', 'perfis'], async () => {
+  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'etiquetas', 'perfis', 'recebimentos'], async () => {
     if (ctx.ativa()) await desenhar();
   }));
 }

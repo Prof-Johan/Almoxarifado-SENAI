@@ -1,12 +1,16 @@
 import { supabase } from '../lib/supabase.js';
 import { $, esc, executando } from '../lib/ui.js';
+import { aplicarTema } from '../lib/tema.js';
 import { entrar, resolverEmail, temEmailReal, estado, sair, registrarSessao } from '../lib/sessao.js';
 
 const raiz = () => $('#raiz');
 
 function cartao(conteudo) {
   return `<div class="auth-layer"><main class="auth-card">
-    <img class="auth-logo-senai" src="/senai-logo.png" alt="SENAI" width="150" height="43">
+    <div class="auth-topo">
+      <img class="auth-logo-senai" src="/senai-logo.png" alt="SENAI" width="150" height="43">
+      <button class="auth-link auth-tema" type="button" data-alternar-tema aria-pressed="false">Modo noturno</button>
+    </div>
     ${conteudo}
   </main></div>`;
 }
@@ -57,6 +61,7 @@ export function mostrarLogin(aviso = '', aoEntrar) {
     <p class="auth-footer">Não tem acesso? Peça ao gestor do almoxarifado para criar a sua conta.</p>
   `);
   ligarMostrarSenha($('.auth-card'));
+  aplicarTema();
   setTimeout(() => $('#login')?.focus(), 30);
 
   $('#formLogin').addEventListener('submit', async e => {
@@ -94,6 +99,7 @@ function mostrarEsqueci(aoEntrar) {
     </form>
     <button class="auth-link" type="button" id="voltarLogin">Voltar para o login</button>
   `);
+  aplicarTema();
   setTimeout(() => $('#loginEsqueci')?.focus(), 30);
   $('#voltarLogin').addEventListener('click', () => mostrarLogin('', aoEntrar));
 
@@ -145,6 +151,7 @@ export function mostrarDefinirSenha(motivo, aoConcluir) {
     <button class="auth-link" type="button" id="sairDefinir">Sair</button>
   `);
   ligarMostrarSenha($('.auth-card'));
+  aplicarTema();
   setTimeout(() => $('#novaSenha')?.focus(), 30);
   $('#sairDefinir').addEventListener('click', () => sair());
 

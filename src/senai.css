@@ -277,3 +277,150 @@ button.chip-material:hover { border-color: var(--senai-azul); }
 
 .toolbar.filtros { justify-content: flex-start; align-items: flex-end; }
 .regra-peso { margin-top: 12px; }
+
+/* =====================================================================
+   Recebimento
+   ===================================================================== */
+.etapas { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; counter-reset: etapa; }
+.etapas li {
+  counter-increment: etapa;
+  border-top: 4px solid var(--line);
+  padding-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.etapas li::before { content: counter(etapa) ". "; }
+.etapas li.feita { border-top-color: #17946b; color: var(--ink); }
+.etapas li.atual { border-top-color: var(--senai-azul); color: var(--senai-azul); }
+.etapas li.problema { border-top-color: #c8363f; color: #c8363f; }
+.rec-cabecalho { display: grid; grid-template-columns: 1fr 300px; gap: 18px; align-items: start; margin-bottom: 12px; }
+.nf-caixa { border: 1px solid var(--line); border-left: 4px solid #17946b; border-radius: 4px; padding: 12px 14px; display: grid; gap: 4px; }
+.nf-caixa.falta { border-left-color: #c8363f; }
+.arquivo-botao { cursor: pointer; }
+.tabela-conferencia input { min-height: 36px; padding: 6px 8px; }
+.tabela-conferencia .conf-qtd { width: 110px; }
+.linha-item { display: grid; grid-template-columns: 1fr 140px 50px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.linha-item.adicionar { grid-template-columns: 1fr 140px auto; margin-top: 10px; }
+.linha-item input.invalido { border-color: #c8363f; }
+.rec-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checklist input { width: 18px; height: 18px; }
+.painel-acao { margin-top: 18px; border: 1px solid var(--line); border-left: 4px solid #c8363f; border-radius: 4px; padding: 14px 16px; }
+.painel-acao h3 { font-size: 15px; margin-bottom: 4px; }
+.notice-ok { border-left-color: #17946b; background: #eefaf4; color: #145c45; }
+
+@media (max-width: 900px) {
+  .rec-cabecalho, .rec-colunas { grid-template-columns: 1fr; }
+  .etapas { grid-template-columns: repeat(2, 1fr); }
+  .linha-item { grid-template-columns: 1fr 100px auto; }
+  .linha-item .item-un { display: none; }
+}
+
+/* =====================================================================
+   Modo noturno
+   ===================================================================== */
+[data-tema="escuro"] {
+  color-scheme: dark;
+  --bg: #0d1626;
+  --card: #152238;
+  --line: #2a3b57;
+  --ink: #e2e9f3;
+  --muted: #9bacc2;
+  --navy: #d5e2fa;
+  --senai-azul-claro: #1c2f4f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 22px rgba(0, 0, 0, .25);
+}
+[data-tema="escuro"] body { background: var(--bg); color: var(--ink); }
+[data-tema="escuro"] .sidebar { background: #10203c; }
+[data-tema="escuro"] .nav button.active { background: #1c3561; }
+[data-tema="escuro"] .topbar,
+[data-tema="escuro"] .modal,
+[data-tema="escuro"] .modal-foot,
+[data-tema="escuro"] .auth-card,
+[data-tema="escuro"] .deposito-card,
+[data-tema="escuro"] .chip,
+[data-tema="escuro"] .chip-material { background: var(--card); color: var(--ink); }
+[data-tema="escuro"] .topbar { border-bottom-color: #1c3561; }
+[data-tema="escuro"] input,
+[data-tema="escuro"] select,
+[data-tema="escuro"] textarea { background: #0f1b2e; color: var(--ink); border-color: #33476a; }
+[data-tema="escuro"] input::placeholder,
+[data-tema="escuro"] textarea::placeholder { color: #6f8099; }
+[data-tema="escuro"] .field label,
+[data-tema="escuro"] .auth-field label,
+[data-tema="escuro"] .filtro-campo { color: #a9bad0; }
+[data-tema="escuro"] .btn-ghost { background: transparent; color: #d5e2fa; border-color: #33476a; }
+[data-tema="escuro"] .btn-light { background: #1c2f4f; color: #d5e2fa; }
+[data-tema="escuro"] .btn-light:hover:not(:disabled) { background: #253c63; }
+[data-tema="escuro"] .btn-primary { background: #3a6cc0; }
+[data-tema="escuro"] .btn-primary:hover:not(:disabled) { background: #4a7bd0; }
+[data-tema="escuro"] .btn-navy { background: #1c3561; color: #fff; }
+[data-tema="escuro"] .close,
+[data-tema="escuro"] .senha-ver { background: #1c2f4f; color: #d5e2fa; }
+[data-tema="escuro"] .table th { background: #1a2a44; color: #cfdcf3; }
+[data-tema="escuro"] .table th,
+[data-tema="escuro"] .table td,
+[data-tema="escuro"] .lista-simples li { border-bottom-color: var(--line); }
+[data-tema="escuro"] .pagehead h1,
+[data-tema="escuro"] .section-title,
+[data-tema="escuro"] .top-title,
+[data-tema="escuro"] .modal-title,
+[data-tema="escuro"] .auth-heading,
+[data-tema="escuro"] .detalhe-titulo,
+[data-tema="escuro"] .deposito-topo h3,
+[data-tema="escuro"] .bloco-info > b,
+[data-tema="escuro"] .link-material b,
+[data-tema="escuro"] .codigo-local,
+[data-tema="escuro"] .family-name,
+[data-tema="escuro"] .mapa-andar,
+[data-tema="escuro"] .stat .v,
+[data-tema="escuro"] .chip { color: #e6eefc; }
+[data-tema="escuro"] .chip.ativo { background: #3a6cc0; border-color: #3a6cc0; color: #fff; }
+[data-tema="escuro"] .account-user { background: #1c2f4f; color: #cfe0ff; }
+[data-tema="escuro"] .family-card,
+[data-tema="escuro"] .bloco-info,
+[data-tema="escuro"] .detalhe-foto,
+[data-tema="escuro"] .opcao-acesso { background: #16243b; border-color: var(--line); }
+[data-tema="escuro"] .celula { background: #142036; border-color: #33445f; color: #8597b0; }
+[data-tema="escuro"] .barra-ocupacao { background: #22324d; }
+[data-tema="escuro"] .pill.ok, [data-tema="escuro"] .perfil-almoxarife { background: #133a2c; color: #7fe0b5; }
+[data-tema="escuro"] .pill.low, [data-tema="escuro"] .perfil-solicitante { background: #3a3013; color: #f5cf6b; }
+[data-tema="escuro"] .pill.red { background: #3f1a21; color: #ff9aa5; }
+[data-tema="escuro"] .pill.blue, [data-tema="escuro"] .perfil-gestor { background: #1b2f52; color: #9cc1ff; }
+[data-tema="escuro"] .pill.gray, [data-tema="escuro"] .perfil-consulta { background: #233046; color: #aab7c9; }
+[data-tema="escuro"] .perfil-master { background: #3a6cc0; color: #fff; }
+[data-tema="escuro"] .notice { background: #34211a; color: #ffc6b3; }
+[data-tema="escuro"] .notice-erro,
+[data-tema="escuro"] .form-erro,
+[data-tema="escuro"] .auth-erro,
+[data-tema="escuro"] .aviso-concorrencia { background: #3f1a21; color: #ffb0b8; }
+[data-tema="escuro"] .notice-ok { background: #12301f; color: #9de6c3; }
+[data-tema="escuro"] .ao-vivo { border-color: var(--line); color: #9bacc2; }
+[data-tema="escuro"] .ao-vivo.conectado { background: #12301f; border-color: #1f5a3d; color: #7fe0b5; }
+[data-tema="escuro"] .positivo, [data-tema="escuro"] .status-bom { color: #6fdcaa; }
+[data-tema="escuro"] .negativo, [data-tema="escuro"] .status-ruim, [data-tema="escuro"] .chip.alerta b { color: #ff8b96; }
+[data-tema="escuro"] .etapas li.atual { color: #9cc1ff; border-top-color: #4a7bd0; }
+[data-tema="escuro"] .etapas li.problema { color: #ff8b96; }
+[data-tema="escuro"] .concluido-marca { background: #133a2c; color: #7fe0b5; }
+[data-tema="escuro"] .senha-entrega b { color: #e6eefc; }
+[data-tema="escuro"] .auth-link { color: #9cc1ff; }
+[data-tema="escuro"] .auth-layer { background:
+    linear-gradient(115deg, transparent 0 62%, #b8462a 62% 64%, transparent 64%),
+    linear-gradient(135deg, #0a1426, #14294d); }
+[data-tema="escuro"] .auth-logo-senai,
+[data-tema="escuro"] .auth-card .auth-logo-senai { content: url('/senai-logo-branco.png'); }
+[data-tema="escuro"] .toast { background: #e2e9f3; color: #0d1626; }
+[data-tema="escuro"] .stat-alerta { border-left-color: #f15d36; }
+
+.auth-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.auth-tema { margin: 0; font-size: 13px; }
+[data-tema="escuro"] .detalhe-desc,
+[data-tema="escuro"] .desc-linha,
+[data-tema="escuro"] .classe-descricao { color: #b5c4d8; }
+[data-tema="escuro"] .bloco-info small,
+[data-tema="escuro"] .bloco-info > span,
+[data-tema="escuro"] .ficha dt,
+[data-tema="escuro"] .previa-local span,
+[data-tema="escuro"] .dica { color: #9bacc2; }
+[data-tema="escuro"] .ficha dd { color: var(--ink); }

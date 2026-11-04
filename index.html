@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2957a4">
   <title>Almoxarifado Inteligente</title>
+  <script>
+    // Aplica o modo noturno antes de desenhar a página, sem piscar branco.
+    try {
+      var t = localStorage.getItem('almox-tema');
+      if (t !== 'escuro' && t !== 'claro') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro';
+      document.documentElement.dataset.tema = t;
+    } catch (e) {}
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='6' fill='%232957a4'/><path d='M44 6h14v10L40 26z' fill='%23f15d36'/><text x='30' y='50' font-family='Arial' font-size='36' font-weight='900' font-style='italic' text-anchor='middle' fill='white'>S</text></svg>">
 </head>
 <body>

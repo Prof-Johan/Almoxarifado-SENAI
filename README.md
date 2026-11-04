@@ -4,6 +4,7 @@ Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com 
 
 - **Entrega 1:** login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
 - **Entrega 2:** depósitos e endereços, materiais, saldo com movimentações, etiquetas com QR, fotos, atualização em tempo real e identidade visual do SENAI.
+- **Entrega 3:** recebimento com nota fiscal (validação simulada), conferência com checklist do POP, divergência com fotos, aprovação com entrada no estoque, liberação para guarda e modo noturno.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
 
@@ -24,6 +25,10 @@ O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo
 - Busca sem acento e sem símbolos ("8x50" encontra "8 x 50"), filtros por classe, depósito e situação do estoque.
 - Etiquetas com QR em três formatos (100 × 50 mm, 100 × 150 mm com quadro de quantidade e folha A4). O QR abre o material no sistema. O sistema avisa quais etiquetas precisam ser reimpressas quando nome, classe, cor ou endereço mudam.
 - Tudo em tempo real: quando alguém cadastra ou altera algo, as outras telas abertas se atualizam sozinhas, inclusive as listas dentro dos formulários.
+- Recebimento no fluxo do POP: recebimento, conferência e etiquetagem, revisão, entrada no estoque e guarda. A nota fiscal é anexada como arquivo (PDF, foto ou XML) e a validação é simulada. A mesma nota do mesmo fornecedor não entra duas vezes.
+- Conferência com quantidade conferida por item, diferença calculada na hora e checklist de 7 itens. Sem nota anexada, sem conferência completa ou sem checklist, o sistema não aprova.
+- Divergência com descrição e fotos. Com divergência, só gestor ou master aprovam, e entra no estoque a quantidade conferida.
+- Modo noturno, no botão do topo ou do login. A escolha fica salva no aparelho; sem escolha, segue o modo do celular ou do computador.
 
 ## Perfis
 
@@ -43,12 +48,12 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 1 no ar?** Só rode o `supabase/migrations/0002_materiais.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou.
+> **Já tem a entrega 2 no ar?** Só rode o `supabase/migrations/0003_recebimento.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver na entrega 1, rode antes o `0002_materiais.sql`.
 
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `supabase/migrations/0002_materiais.sql`. Os dois têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. O segundo também cria o espaço de arquivos `materiais` (fotos e fichas de segurança) e liga a atualização em tempo real.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql` e `0003_recebimento.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -145,6 +150,9 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 9. Abra **Materiais** em dois computadores. Cadastre um material em um deles e veja aparecer no outro, sem recarregar.
 10. Tente colocar um material elétrico no D01 e um material pesado no último andar: o sistema bloqueia o primeiro e avisa sobre o segundo.
 11. Imprima uma etiqueta em PDF, leia o QR com o celular e confira se abre o material.
+12. Em **Recebimento**, registre uma nota com dois itens anexando qualquer PDF. Confira as quantidades, marque o checklist e aprove. O saldo dos materiais sobe e a entrada aparece nas movimentações.
+13. Faça outro recebimento com uma quantidade menor que a da nota. Como almoxarife, o sistema não deixa aprovar: registre a divergência com uma foto. Entre como gestor e aprove com o conferido.
+14. Troque para o modo noturno e confira as telas.
 
 ## Etiquetas
 
@@ -193,6 +201,8 @@ src/pages/historico.js             Histórico de alterações
 src/pages/conta.js                 Minha conta
 src/pages/materiais.js             Materiais: lista, cadastro, detalhe, ajuste e etiquetas
 src/pages/depositos.js             Depósitos, regras de peso e mapa de ocupação
+src/pages/recebimentos.js          Recebimento, conferência, divergência e guarda
+src/lib/tema.js                    Modo noturno
 src/lib/materiais.js               Código de localização, situação do estoque e dados da etiqueta
 src/lib/etiquetas.js               Desenho das etiquetas e janela de impressão
 src/lib/arquivos.js                Envio de fotos e PDFs ao Storage
@@ -201,12 +211,13 @@ src/senai.css                      Cores, logo e cantos da identidade SENAI
 public/                            Logo do SENAI (original e branco)
 supabase/migrations/0001_base.sql  Tabelas, permissões, histórico e regras
 supabase/migrations/0002_materiais.sql  Depósitos, materiais, saldo, etiquetas, arquivos e tempo real
+supabase/migrations/0003_recebimento.sql  Recebimento, conferência, divergência e entrada no estoque
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```
 
 ## Próximas entregas
 
-1. Recebimento com foto da nota fiscal, checklist e divergências. É por ele que o saldo vai entrar.
-2. Pedidos, separação e retirada com crachá ou foto.
-3. Relatórios em Excel, relatório semanal, rotatividade e modo offline.
+1. Pedidos, separação e retirada com crachá ou foto, devolução e prazo de 7 dias.
+2. Relatórios em Excel, relatório semanal, rotatividade e modo offline.
+3. Quando houver nota fiscal real: leitura da chave de acesso e validação de verdade.
