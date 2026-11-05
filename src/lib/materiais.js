@@ -62,6 +62,8 @@ export function dadosEtiqueta(m) {
     local: m.local || '',
     unidade: m.unidade_medida,
     embalagem: embalagemTexto(m),
+    // Só entra quando o material tem centro de custo, para não mudar as etiquetas antigas.
+    ...(m.centro ? { centro: m.centro } : {}),
   };
 }
 

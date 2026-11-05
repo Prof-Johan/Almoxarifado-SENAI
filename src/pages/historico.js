@@ -90,6 +90,8 @@ const CAMPOS = {
   usa_emergencial: 'Usa saldo emergencial',
   prazo_retirada: 'Prazo para retirar',
   ajustes_aplicados: 'Ajustes aplicados',
+  centro_custo_id: 'Centro de custo',
+  codigo_centro_custo: 'Código do centro de custo',
 };
 
 const STATUS_RECEBIMENTO = {
@@ -158,6 +160,7 @@ export async function montar(el, ctx) {
     if (campo === 'retirada_metodo') return valor === 'CRACHA' ? 'Crachá' : 'Foto';
     if (campo === 'usa_emergencial') return valor ? 'Sim' : 'Não';
     if (campo === 'nf_data') return esc(fmtData(valor + 'T12:00:00'));
+    if (campo === 'centro_custo_id') return esc(nomes.setores.get(String(valor)) || `nº ${valor}`);
     if (campo === 'classe_id') return esc(nomes.classes.get(String(valor)) || `nº ${valor}`);
     if (campo === 'deposito_id') return esc(nomes.depositos.get(String(valor)) || `nº ${valor}`);
     if (campo === 'criticidade') return esc(CRITICIDADES[valor]?.rotulo || valor);

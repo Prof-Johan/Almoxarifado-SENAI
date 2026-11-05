@@ -39,9 +39,10 @@ export async function montar(el, ctx) {
   let classes = [];
   let depositos = [];
   let unidades = [];
+  let setores = [];
   let config = { pesoPesado: 15, andarMaxPesado: 2 };
   const porId = { classes: new Map(), depositos: new Map(), unidades: new Map(), materiais: new Map() };
-  const filtro = { busca: '', classe: '', deposito: '', situacao: '', etiqueta: false, removidos: false, ordem: 'nome' };
+  const filtro = { busca: '', classe: '', deposito: '', situacao: '', etiqueta: false, removidos: false, ordem: 'nome', centro: '' };
   let reservas = new Map();
   let rotacao = new Map();
   const NIVEIS_ROT = { ALTA: 'Alta', MEDIA: 'Média', BAIXA: 'Baixa' };
@@ -57,7 +58,9 @@ export async function montar(el, ctx) {
       supabase.from('configuracoes').select('chave,valor').in('chave', ['peso_pesado_kg', 'andar_maximo_pesado']),
     ]);
     for (const r of [c, d, u, cfg]) if (r.error) throw r.error;
-    const [res, rot] = await Promise.all([supabase.rpc('reservas'), supabase.rpc('rotatividade', { p_dias: 90 })]);
+    const [res, rot, set] = await Promise.all([supabase.rpc('reservas'), supabase.rpc('rotatividade', { p_dias: 90 }), supabase.from('setores').select('*').order('nome')]);
+    setores = set.data || [];
+    const setoresPorId = new Map(setores.map(x => [x.id, x]));
     reservas = new Map((res.data || []).map(x => [x.material_id, Number(x.reservado)]));
     rotacao = new Map((rot.data || []).map(x => [x.material_id, x]));
     classes = c.data;
@@ -81,12 +84,14 @@ export async function montar(el, ctx) {
         local: codigoLocalizacao(deposito?.numero, item.prateleira, item.lado, item.andar, item.posicao),
         etiqueta: etiquetas.get(item.id),
         reservado: reservas.get(item.id) || 0,
+        centro: setoresPorId.get(item.centro_custo_id)?.nome || '',
+        centroCodigo: setoresPorId.get(item.centro_custo_id)?.codigo_centro_custo || '',
         rotatividade: rotacao.get(item.id) || { nivel: 'BAIXA', retiradas: 0, quantidade: 0 },
       };
       completo.disponivel = Math.max(Number(item.saldo) - completo.reservado, 0);
       completo.situacao = situacaoEstoque(completo);
       completo.pendente = !completo.removido_em && etiquetaPendente(completo);
-      completo.busca = textoBusca(item.nome, item.prn, item.codigo, item.marca, item.descricao, completo.local, completo.classe?.nome);
+      completo.busca = textoBusca(item.nome, item.prn, item.codigo, item.marca, item.descricao, completo.local, completo.classe?.nome, completo.centro, completo.centroCodigo);
       // Versão sem espaços: "8x50" encontra "8 x 50".
       completo.compacto = completo.busca.replace(/ /g, '');
       return completo;
@@ -104,6 +109,8 @@ export async function montar(el, ctx) {
       if (filtro.removidos ? !m.removido_em : m.removido_em) return false;
       if (filtro.classe && String(m.classe_id) !== filtro.classe) return false;
       if (filtro.deposito && String(m.deposito_id) !== filtro.deposito) return false;
+      if (filtro.centro === 'geral' && m.centro_custo_id) return false;
+      if (filtro.centro && filtro.centro !== 'geral' && String(m.centro_custo_id) !== filtro.centro) return false;
       if (filtro.situacao === 'baixo' && !['baixo', 'emergencial', 'zerado'].includes(m.situacao.id)) return false;
       if (filtro.situacao && filtro.situacao !== 'baixo' && m.situacao.id !== filtro.situacao) return false;
       if (filtro.etiqueta && !m.pendente) return false;
@@ -156,7 +163,8 @@ export async function montar(el, ctx) {
             <span class="barra-classe" style="background:${esc(m.classe?.cor || '#ccc')}" aria-hidden="true"></span>
             <span><b>${esc(m.nome)}</b>
             ${m.descricao ? `<span class="desc-linha">${esc(m.descricao)}</span>` : ''}
-            <span class="small muted">PRN ${esc(m.prn)} · ${esc(m.codigo)} · ${esc(m.classe?.nome || '')}</span></span>
+            <span class="small muted">PRN ${esc(m.prn)} · ${esc(m.codigo)} · ${esc(m.classe?.nome || '')}</span>
+            ${m.centro ? `<span><span class="pill pill-cc pill-mini">CC ${esc(m.centro)}</span></span>` : ''}</span>
           </button>
         </td>
         <td><span class="codigo-local">${esc(m.local)}</span><div class="small muted">${esc(m.unidade?.sigla || m.unidade?.nome || '')}</div></td>
@@ -180,6 +188,8 @@ export async function montar(el, ctx) {
         ${depositosAtivos.map(d => `<option value="${d.id}" ${filtro.deposito === String(d.id) ? 'selected' : ''}>${esc(porId.unidades.get(d.unidade_id)?.sigla || '')} ${esc(nomeDeposito(d))}</option>`).join('')}</select>
       <select id="fSituacao" aria-label="Filtrar por situação do estoque"><option value="">Qualquer estoque</option>
         ${Object.entries(SITUACOES).map(([v, t]) => `<option value="${v}" ${filtro.situacao === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      ${setores.some(x => !x.removido_em) ? `<select id="fCentro" aria-label="Filtrar por centro de custo"><option value="">Todos os centros de custo</option><option value="geral" ${filtro.centro === 'geral' ? 'selected' : ''}>Uso geral (sem centro)</option>
+        ${setores.filter(x => !x.removido_em).map(x => `<option value="${x.id}" ${filtro.centro === String(x.id) ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select>` : ''}
       <select id="fOrdem" aria-label="Ordenar">${[['nome', 'Ordem: nome'], ['retirados', 'Ordem: mais retirados'], ['saldo', 'Ordem: mais perto do mínimo']]
         .map(([v, t]) => `<option value="${v}" ${filtro.ordem === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
   }
@@ -298,6 +308,7 @@ export async function montar(el, ctx) {
             <div><dt>PRN</dt><dd>${esc(m.prn)}</dd></div>
             <div><dt>Código</dt><dd>${esc(m.codigo)}</dd></div>
             <div><dt>Marca</dt><dd>${esc(m.marca || 'Não informada')}</dd></div>
+            <div><dt>Centro de custo</dt><dd>${m.centro ? `${esc(m.centro)}${m.centroCodigo ? ` (${esc(m.centroCodigo)})` : ''}. Só esse setor pode pedir.` : 'Uso geral'}</dd></div>
             <div><dt>Unidade de controle</dt><dd>${esc(UNIDADES_MEDIDA[m.unidade_medida] || m.unidade_medida)} (${esc(m.unidade_medida)})${embalagem ? `<br><span class="small">${esc(embalagem)}</span>` : ''}</dd></div>
             <div><dt>Peso bruto</dt><dd>${m.peso_kg ? fmtQtd(m.peso_kg) + ' kg' : 'Não informado'}</dd></div>
             <div><dt>EPI necessário</dt><dd>${esc(m.epi || 'Nenhum informado')}</dd></div>
@@ -441,6 +452,7 @@ export async function montar(el, ctx) {
             <div class="field"><label for="mPrn">PRN *</label><input id="mPrn" maxlength="40" required value="${esc(inicial.prn || '')}" autocomplete="off"></div>
             <div class="field"><label for="mClasse">Classe *</label><select id="mClasse"></select><small class="dica" id="mClassePrevia"></small></div>
             <div class="field"><label for="mMarca">Marca</label><input id="mMarca" maxlength="60" value="${esc(inicial.marca || '')}"></div>
+            <div class="field"><label for="mCentro">Centro de custo</label><select id="mCentro"></select><small class="dica">Escolha um setor quando o estoque for só dele. Ex.: copos da Elétrica e copos da Mecânica são dois cadastros, cada um com o seu saldo.</small></div>
             <div class="field"><label for="mUnidade">Unidade de controle *</label><select id="mUnidade">${opcoesUnidadeMedida(inicial.unidade_medida || 'un')}</select></div>
             <div class="field wide"><label for="mDescricao">Descrição e para que serve</label><textarea id="mDescricao" maxlength="300" rows="2" placeholder="Ex.: aço carbono zincado, para manutenção mecânica">${esc(inicial.descricao || '')}</textarea><small class="dica">Aparece na lista de materiais e na etiqueta.</small></div>
           </div>
@@ -518,6 +530,13 @@ export async function montar(el, ctx) {
       campo('mClassePrevia').innerHTML = c ? `Cor da etiqueta: ${pillCor(c.nome, c.cor, 'pill-mini')}` : '';
     }
 
+    function preencherCentros() {
+      const atual = campo('mCentro').value || String(inicial.centro_custo_id || '');
+      campo('mCentro').innerHTML = '<option value="">Uso geral (qualquer setor pode pedir)</option>' + setores
+        .filter(x => !x.removido_em || x.id === inicial.centro_custo_id)
+        .map(x => `<option value="${x.id}" ${String(x.id) === atual ? 'selected' : ''}>${esc(x.nome)}${x.codigo_centro_custo ? ` · ${esc(x.codigo_centro_custo)}` : ''}</option>`).join('');
+    }
+
     function preencherUnidades() {
       const lista = unidades.filter(u => !u.removido_em && depositos.some(d => !d.removido_em && d.unidade_id === u.id));
       campo('mUnidadeFilial').innerHTML = lista.map(u => `<option value="${u.id}" ${u.id === unidadeAtual ? 'selected' : ''}>${esc(u.nome)}</option>`).join('');
@@ -586,6 +605,7 @@ export async function montar(el, ctx) {
     }
 
     preencherClasses();
+    preencherCentros();
     preencherUnidades();
     preencherDepositos();
     desenharRelacionados();
@@ -633,10 +653,11 @@ export async function montar(el, ctx) {
     });
 
     // Tempo real: classes, depósitos e materiais novos aparecem no formulário.
-    const parar = ouvir(['classes', 'depositos', 'unidades', 'materiais', 'configuracoes'], async (_tabelas, mudancas) => {
+    const parar = ouvir(['classes', 'depositos', 'unidades', 'materiais', 'configuracoes', 'setores'], async (_tabelas, mudancas) => {
       await carregar();
       atualizarLista();
       preencherClasses();
+      preencherCentros();
       preencherUnidades();
       preencherDepositos();
       desenharRelacionados();
@@ -659,6 +680,7 @@ export async function montar(el, ctx) {
         prn: campo('mPrn').value.trim(),
         classe_id: Number(campo('mClasse').value) || null,
         marca: campo('mMarca').value.trim() || null,
+        centro_custo_id: Number(campo('mCentro').value) || null,
         descricao: campo('mDescricao').value.trim() || null,
         unidade_medida: campo('mUnidade').value,
         estoque_minimo: valorNum('mMinimo') ?? 0,
@@ -908,6 +930,7 @@ export async function montar(el, ctx) {
     if (id === 'fSituacao') { filtro.situacao = e.target.value; filtro.etiqueta = false; }
     if (id === 'fRemovidos') filtro.removidos = e.target.checked;
     if (id === 'fOrdem') filtro.ordem = e.target.value;
+    if (id === 'fCentro') filtro.centro = e.target.value;
     if (id === 'selecionarTodos') {
       filtrados().filter(x => !x.removido_em).forEach(x => (e.target.checked ? selecionados.add(x.id) : selecionados.delete(x.id)));
     }
@@ -917,7 +940,7 @@ export async function montar(el, ctx) {
       else selecionados.delete(Number(marcar));
       return atualizarContagem();
     }
-    if (['fClasse', 'fDeposito', 'fSituacao', 'fRemovidos', 'fOrdem', 'selecionarTodos'].includes(id)) atualizarLista();
+    if (['fClasse', 'fDeposito', 'fSituacao', 'fRemovidos', 'fOrdem', 'fCentro', 'selecionarTodos'].includes(id)) atualizarLista();
   });
   el.addEventListener('click', e => {
     const resumoBotao = e.target.closest('[data-resumo]');
@@ -940,10 +963,10 @@ export async function montar(el, ctx) {
   });
 
   // Tempo real na lista.
-  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'unidades', 'etiquetas', 'configuracoes', 'pedidos', 'pedido_itens'], async tabelas => {
+  ctx.aoSair(ouvir(['materiais', 'classes', 'depositos', 'unidades', 'etiquetas', 'configuracoes', 'pedidos', 'pedido_itens', 'setores'], async tabelas => {
     if (!ctx.ativa()) return;
     await carregar();
-    if (tabelas.has('classes') || tabelas.has('depositos') || tabelas.has('unidades')) atualizarFiltros();
+    if (tabelas.has('classes') || tabelas.has('depositos') || tabelas.has('unidades') || tabelas.has('setores')) atualizarFiltros();
     atualizarLista();
   }));
 

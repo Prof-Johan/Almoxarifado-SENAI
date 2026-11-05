@@ -6,6 +6,7 @@ import { ouvir } from '../lib/tempoReal.js';
 import { estado } from '../lib/sessao.js';
 import { codigoLocalizacao, fmtQtd, termoBusca, textoBusca } from '../lib/materiais.js';
 import { enviarArquivo, prepararImagem, extensao, abrirArquivoPrivado } from '../lib/arquivos.js';
+import { FORMATOS_COMPROVANTE, abrirJanelaComprovante, montarComprovante } from '../lib/comprovante.js';
 
 export const STATUS_PEDIDO = {
   AGUARDANDO_APROVACAO: { rotulo: 'Aguardando aprovação', classe: 'low' },
@@ -66,7 +67,7 @@ export async function montar(el, ctx) {
       buscarTodos(() => supabase.from('materiais').select('*').order('nome')),
       supabase.from('classes').select('id,nome,cor'),
       supabase.from('depositos').select('id,numero,nome'),
-      supabase.from('setores').select('id,nome,removido_em').order('nome'),
+      supabase.from('setores').select('*').order('nome'),
       supabase.from('unidades').select('id,nome,removido_em').order('nome'),
       supabase.rpc('reservas'),
       supabase.from('configuracoes').select('chave,valor').in('chave', ['exigir_aprovacao_pedidos', 'prazo_retirada_dias']),
@@ -102,6 +103,29 @@ export async function montar(el, ctx) {
   }
 
   const itensDe = p => itensPor.get(p.id) || [];
+  // Estoque por setor: classes permitidas e centro de custo.
+  const setorDe = id => setores.find(x => String(x.id) === String(id));
+  function bloqueioSetor(m, setorId) {
+    const setor = setorDe(setorId);
+    if (!setor) return 'Escolha o setor.';
+    if (m.centro_custo_id && String(m.centro_custo_id) !== String(setor.id)) return `é do centro de custo ${setorDe(m.centro_custo_id)?.nome || 'de outro setor'}`;
+    if (setor.classes_permitidas?.length && !setor.classes_permitidas.includes(m.classe_id)) return `o setor ${setor.nome} não pede a classe ${m.classe?.nome || ''}`;
+    return '';
+  }
+  async function imprimirComprovante(pedidoId, formato) {
+    const janela = abrirJanelaComprovante();
+    const p = porId.pedidos.get(pedidoId);
+    const itens = itensDe(p).filter(i => Number(i.quantidade_entregue ?? i.quantidade_separada ?? 0) > 0).map(i => {
+      const m = porId.materiais.get(i.material_id) || {};
+      return { codigo: m.codigo, nome: m.nome, quantidade: i.quantidade_entregue ?? i.quantidade_separada, unidade: m.unidade_medida, local: m.local };
+    });
+    const setor = setorDe(p.setor_id);
+    await montarComprovante(janela, {
+      pedido: p, itens, setor: setor?.nome, centroCusto: setor?.codigo_centro_custo,
+      unidade: unidades.find(u => u.id === p.unidade_id)?.nome, peso: pesoDe(p),
+      epis: [...new Set(itensDe(p).map(i => porId.materiais.get(i.material_id)).filter(m => m?.epi).map(m => `${m.nome}: ${m.epi}`))],
+    }, formato);
+  }
   const pesoDe = p => itensDe(p).reduce((t, i) => t + Number(porId.materiais.get(i.material_id)?.peso_kg || 0) * Number(i.quantidade_separada ?? i.quantidade), 0);
   const ativos = () => materiais.filter(m => !m.removido_em);
   const acharMaterial = texto => {
@@ -201,7 +225,7 @@ export async function montar(el, ctx) {
   // -----------------------------------------------------------------
   // Novo pedido
   // -----------------------------------------------------------------
-  const opcoesMateriais = () => ativos().map(m => `<option value="${esc(m.rotulo)}"></option>`).join('');
+  const opcoesMateriais = (setorId = null) => ativos().filter(m => !setorId || !bloqueioSetor(m, setorId)).map(m => `<option value="${esc(m.rotulo)}"></option>`).join('');
   const linhaItem = () => `<div class="linha-pedido">
       <input class="item-material" list="listaMateriaisPed" placeholder="Busque por nome, PRN ou código" aria-label="Material" autocomplete="off">
       <input class="item-qtd" type="number" min="0" step="any" placeholder="Qtd." aria-label="Quantidade">
@@ -212,18 +236,23 @@ export async function montar(el, ctx) {
 
   function abrirNovo() {
     const perfil = estado.perfil;
+    const travado = !pode.operar;
+    if (travado && !perfil?.setor_id) {
+      return mostrarConcluido('Falta o seu setor', '<p>Seu usuário ainda não tem setor. Peça ao gestor para incluir o setor no seu cadastro: é por ele que o sistema sabe quais materiais você pode pedir.</p>');
+    }
     const fundo = abrirModal({
       titulo: 'Novo pedido de material',
       subtitulo: `O almoxarifado separa e você retira com o crachá em até ${regras.prazo} dias.`,
       largo: true,
       corpo: `<form id="formPed" novalidate>
         <div class="fields campos-3">
-          <div class="field"><label for="pSetor">Setor solicitante *</label><select id="pSetor"><option value="">Escolha o setor</option>${setores.filter(s => !s.removido_em).map(s => `<option value="${s.id}" ${s.id === perfil?.setor_id ? 'selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></div>
+          <div class="field"><label for="pSetor">Setor solicitante *</label><select id="pSetor" ${travado ? 'disabled' : ''}><option value="">Escolha o setor</option>${setores.filter(s => !s.removido_em).map(s => `<option value="${s.id}" ${s.id === perfil?.setor_id ? 'selected' : ''}>${esc(s.nome)}${s.codigo_centro_custo ? ` · CC ${esc(s.codigo_centro_custo)}` : ''}</option>`).join('')}</select>
+            <small class="dica">${travado ? 'Você pede pelo seu setor. A lista mostra só os materiais que ele pode pedir.' : 'A lista de materiais muda conforme o setor escolhido.'}</small></div>
           <div class="field"><label for="pUnidade">Unidade</label><select id="pUnidade">${unidades.filter(u => !u.removido_em).map(u => `<option value="${u.id}" ${u.id === perfil?.unidade_id ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select></div>
           <div class="field"><label for="pAnexo">Anexo (opcional)</label><input id="pAnexo" type="file" accept="application/pdf,image/*"><small class="dica">Ordem de serviço, requisição assinada ou foto.</small></div>
         </div>
         <div class="form-section"><h3>Materiais</h3>
-          <datalist id="listaMateriaisPed">${opcoesMateriais()}</datalist>
+          <datalist id="listaMateriaisPed">${opcoesMateriais(perfil?.setor_id)}</datalist>
           <div id="pItens">${linhaItem()}</div>
           <button class="btn btn-light btn-sm" type="button" data-add-linha>Adicionar material</button>
           <div id="pResumo" class="resumo-pedido"></div>
@@ -245,8 +274,11 @@ export async function montar(el, ctx) {
         const info = $('.item-info', linha);
         $('.item-material', linha).classList.toggle('invalido', Boolean($('.item-material', linha).value.trim()) && !m);
         if (!m) { info.textContent = ''; return; }
+        const bloqueio = bloqueioSetor(m, $('#pSetor', fundo).value);
+        if (bloqueio) { info.innerHTML = `<b class="negativo">Não pode ser pedido: ${esc(bloqueio)}.</b>`; return; }
         const normal = Math.max(m.disponivel - Number(m.saldo_emergencial), 0);
         const avisos = [`Disponível: ${fmtQtd(m.disponivel)} ${m.unidade_medida}`, `endereço ${m.local}`];
+        if (m.centro_custo_id) avisos.push(`CC ${esc(setorDe(m.centro_custo_id)?.nome || '')}`);
         if (m.peso_kg) avisos.push(`${fmtQtd(m.peso_kg)} kg cada`);
         if (qtd > m.disponivel) avisos.push('<b class="negativo">mais do que há disponível</b>');
         else if (qtd > normal) { avisos.push('<b class="negativo">usa o saldo emergencial</b>'); emergencial = true; }
@@ -263,7 +295,10 @@ export async function montar(el, ctx) {
     }
 
     fundo.addEventListener('input', atualizarResumo);
-    fundo.addEventListener('change', atualizarResumo);
+    fundo.addEventListener('change', e => {
+      if (e.target.id === 'pSetor') $('#listaMateriaisPed', fundo).innerHTML = opcoesMateriais(e.target.value);
+      atualizarResumo();
+    });
     fundo.addEventListener('click', e => {
       if (e.target.closest('[data-add-linha]')) { $('#pItens', fundo).insertAdjacentHTML('beforeend', linhaItem()); $$('.item-material', fundo).at(-1).focus(); }
       const tirar = e.target.closest('[data-tirar-linha]');
@@ -271,7 +306,7 @@ export async function montar(el, ctx) {
     });
     const parar = ouvir(['materiais', 'pedidos', 'pedido_itens', 'setores'], async () => {
       await carregar();
-      $('#listaMateriaisPed', fundo).innerHTML = opcoesMateriais();
+      $('#listaMateriaisPed', fundo).innerHTML = opcoesMateriais($('#pSetor', fundo).value);
       atualizarResumo();
     });
     aoFecharModal(fundo, parar);
@@ -288,6 +323,8 @@ export async function montar(el, ctx) {
         const qtd = Number($('.item-qtd', linha).value);
         if (!m) return falhar(`Material não encontrado: "${texto}". Escolha um da lista.`);
         if (!(qtd > 0)) return falhar(`Informe a quantidade de ${m.nome}.`);
+        const bloqueio = bloqueioSetor(m, $('#pSetor', fundo).value);
+        if (bloqueio) return falhar(`${m.nome} não pode ser pedido: ${bloqueio}.`);
         if (qtd > m.disponivel) return falhar(`${m.nome}: há só ${fmtQtd(m.disponivel)} ${m.unidade_medida} disponível(is).`);
         if (itens.some(i => i.material_id === m.id)) return falhar(`${m.nome} aparece duas vezes. Junte as quantidades.`);
         itens.push({ material_id: m.id, quantidade: qtd, categoria: $('.item-cat', linha).value });
@@ -415,6 +452,7 @@ export async function montar(el, ctx) {
       b.push('<button class="btn btn-light" type="button" data-ped="recusar">Recusar</button>');
       b.push('<button class="btn btn-primary" type="button" data-ped="aprovar">Aprovar pedido</button>');
     }
+    if (p.status === 'RETIRADO') b.push(`<select id="detFormato" aria-label="Formato do comprovante" data-nao-altera>${Object.entries(FORMATOS_COMPROVANTE).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select><button class="btn btn-primary" type="button" data-ped="comprovante">Imprimir comprovante</button>`);
     if (p.status === 'PENDENTE' && pode.operar) b.push('<button class="btn btn-primary" type="button" data-ped="separar">Confirmar separação</button>');
     if (p.status === 'SEPARADO' && pode.operar) {
       b.push('<button class="btn btn-light" type="button" data-ped="refazer">Refazer separação</button>');
@@ -473,10 +511,19 @@ export async function montar(el, ctx) {
       await carregar();
       atualizarLista();
       fecharModal(true);
-      mostrarConcluido('Retirada concluída', `<p><b>${esc(data.recebedor)}</b> retirou o pedido <b>${esc(data.numero)}</b>.</p>
-        <ul class="mudancas">${data.itens.map(i => `<li>${fmtQtd(i.quantidade)} ${esc(i.unidade)} de ${esc(i.nome)}</li>`).join('')}</ul>
-        ${data.outra_pessoa ? '<p class="small muted">Retirado por outra pessoa, não pelo solicitante. Fica registrado no pedido.</p>' : ''}
-        <p class="small muted">A saída já está no estoque e no histórico de movimentações.</p>`);
+      const fim = abrirModal({
+        titulo: 'Retirada concluída',
+        pequeno: true,
+        corpo: `<div class="concluido"><div class="concluido-marca" aria-hidden="true">✓</div><div>
+          <p><b>${esc(data.recebedor)}</b> retirou o pedido <b>${esc(data.numero)}</b>.</p>
+          <ul class="mudancas">${data.itens.map(i => `<li>${fmtQtd(i.quantidade)} ${esc(i.unidade)} de ${esc(i.nome)}</li>`).join('')}</ul>
+          ${data.outra_pessoa ? '<p class="small muted">Retirado por outra pessoa, não pelo solicitante. Fica registrado no pedido.</p>' : ''}
+          <p class="small muted">A saída já está no estoque e no histórico de movimentações.</p>
+          <div class="field" style="margin-top:12px"><label for="fimFormato">Comprovante</label><select id="fimFormato" data-nao-altera>${Object.entries(FORMATOS_COMPROVANTE).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select></div>
+        </div></div>`,
+        rodape: '<button class="btn btn-ghost" type="button" data-fechar>Fechar</button><button class="btn btn-primary" type="button" data-comprovante>Imprimir comprovante</button>',
+      });
+      $('[data-comprovante]', fim).addEventListener('click', () => imprimirComprovante(p.id, $('#fimFormato', fim).value).catch(f => toast(f.message, 'erro')));
     }
 
     corpo.addEventListener('keydown', e => {
@@ -512,6 +559,7 @@ export async function montar(el, ctx) {
         return $('textarea', painel).focus();
       }
       if (acao === 'refazer') { refazendo = true; return redesenhar(); }
+      if (acao === 'comprovante') return imprimirComprovante(p.id, $('#detFormato', fundo).value).catch(f => falhar(f.message));
       if (acao === 'nfc') {
         try {
           const leitor = new window.NDEFReader();
@@ -598,7 +646,7 @@ export async function montar(el, ctx) {
     });
   });
 
-  ctx.aoSair(ouvir(['pedidos', 'pedido_itens', 'materiais', 'setores', 'configuracoes'], async () => {
+  ctx.aoSair(ouvir(['pedidos', 'pedido_itens', 'materiais', 'setores', 'configuracoes', 'classes'], async () => {
     if (!ctx.ativa()) return;
     await carregar();
     atualizarLista();

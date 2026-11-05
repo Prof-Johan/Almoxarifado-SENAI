@@ -5,6 +5,7 @@ Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com 
 - **Entrega 1:** login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
 - **Entrega 2:** depósitos e endereços, materiais, saldo com movimentações, etiquetas com QR, fotos, atualização em tempo real e identidade visual do SENAI.
 - **Entrega 3:** recebimento com nota fiscal (validação simulada), conferência com checklist do POP, divergência com fotos, aprovação com entrada no estoque, liberação para guarda e modo noturno.
+- **Entrega 5 (ajustes dos testadores):** comprovante de retirada em cupom de 80 mm ou A4, contadores de novidades no menu, estoque por setor e centro de custo, fontes Archivo e Source Code Pro, tons pastéis do SENAI e barras de vidro recolhíveis.
 - **Entrega 4 (versão completa):** pedidos pelo setor, aprovação, separação por endereço, retirada com crachá ou foto, devolução, prazo de retirada, inventário periódico, relatórios em Excel, relatório semanal automático, rotatividade, modo offline e atalhos de teclado.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
@@ -58,12 +59,12 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 3 no ar?** Só rode o `supabase/migrations/0004_pedidos_relatorios.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
+> **Já tem a entrega 4 no ar?** Só rode o `supabase/migrations/0005_centro_custo.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
 
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql` e `0004_pedidos_relatorios.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql`, `0004_pedidos_relatorios.sql` e `0005_centro_custo.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -168,6 +169,9 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 17. Abra um inventário de um depósito, conte um item com diferença e conclua como gestor. O saldo é ajustado e o ajuste aparece nas movimentações.
 18. Em Relatórios, gere o relatório semanal e baixe os arquivos em Excel.
 19. Com o sistema aberto, desligue a internet: aparece a faixa vermelha e as consultas continuam com os últimos dados.
+20. Cadastre os setores Elétrica e Mecânica com as classes que cada um pede. Crie um copo para cada centro de custo, com o mesmo PRN. Entre como solicitante da Elétrica e confira que ele vê só o copo da Elétrica e não vê rolamentos.
+21. Confirme uma retirada e imprima o comprovante em cupom e em A4.
+22. Deixe o sistema aberto em Materiais e peça para alguém criar um pedido: o número aparece no item Pedidos do menu.
 
 ## Etiquetas
 
@@ -181,6 +185,24 @@ O QR da etiqueta abre o endereço `.../#/materiais/MAT-000123`. Lido pela câmer
 ## Tarefas automáticas
 
 Para o relatório semanal sair sozinho toda segunda às 7h e os pedidos vencidos serem encerrados a cada hora, ative a extensão **pg_cron** no Supabase (Database > Extensions) e rode o `0004_pedidos_relatorios.sql` de novo. Sem o pg_cron, tudo continua funcionando: os pedidos vencem quando alguém abre a página de pedidos, e o relatório da semana sai pelo botão "Gerar agora".
+
+## Estoque por setor e centro de custo
+
+Cada setor é um centro de custo. Em **Unidades e setores**, informe o código do centro de custo e marque as classes que o setor pode pedir. Exemplo: a Elétrica pede Elétrica e Administrativo; a Mecânica pede Mecânica e Administrativo. Com isso, só a Elétrica vê e pede cabos, e só a Mecânica vê e pede rolamentos.
+
+Quando o estoque de um material é de um setor só, escolha esse setor no campo **Centro de custo** do material. Materiais iguais de centros de custo diferentes, como os copos da Elétrica e os copos da Mecânica, são dois cadastros com o mesmo PRN, cada um com o seu saldo. Sem centro de custo, o material é de uso geral.
+
+O solicitante pede sempre pelo setor do próprio cadastro, então todo solicitante precisa ter setor. O banco confere as duas regras, mesmo que alguém tente pedir por fora da tela.
+
+## Comprovante de retirada
+
+Ao confirmar a retirada, aparece o botão **Imprimir comprovante**, em cupom de 80 mm (impressora térmica) ou folha A4. O comprovante traz o pedido, quem retirou, quem entregou, os itens, o peso, o EPI, o espaço para assinatura e um QR que abre o pedido. Ele pode ser reimpresso depois, pelo próprio pedido retirado.
+
+## Menu
+
+Os números laranja no menu mostram o que outras pessoas criaram ou mudaram desde a última vez que você abriu aquela página. Ao abrir a página, o número some. O total também aparece no título da aba do navegador.
+
+As barras lateral e do topo podem ser recolhidas pelas alças na borda de cada uma, com um movimento curto e um som leve de clique. A escolha fica salva no aparelho.
 
 ## Crachá
 
@@ -235,6 +257,9 @@ src/pages/relatorios.js            Relatórios em Excel, semanal e rotatividade
 src/lib/excel.js                   Geração dos arquivos .xlsx
 src/lib/offline.js                 Modo offline e faixa sem internet
 src/lib/atalhos.js                 Atalhos de teclado
+src/lib/comprovante.js             Comprovante de retirada (cupom e A4)
+src/lib/notificacoes.js            Contadores de novidades no menu
+src/lib/clique.js                  Som de clique das barras
 src/lib/tema.js                    Modo noturno
 src/lib/materiais.js               Código de localização, situação do estoque e dados da etiqueta
 src/lib/etiquetas.js               Desenho das etiquetas e janela de impressão
@@ -246,6 +271,7 @@ supabase/migrations/0001_base.sql  Tabelas, permissões, histórico e regras
 supabase/migrations/0002_materiais.sql  Depósitos, materiais, saldo, etiquetas, arquivos e tempo real
 supabase/migrations/0003_recebimento.sql  Recebimento, conferência, divergência e entrada no estoque
 supabase/migrations/0004_pedidos_relatorios.sql  Pedidos, retirada, devolução, inventário, rotatividade e relatório semanal
+supabase/migrations/0005_centro_custo.sql  Estoque por setor e centro de custo
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```

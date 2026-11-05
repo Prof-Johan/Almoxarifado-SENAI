@@ -116,7 +116,7 @@ export function erroAmigavel(erro) {
   if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
   if (codigo === '23505' || /duplicate key/i.test(msg)) {
     if (/classes_nome/.test(msg)) return 'Já existe uma classe com esse nome.';
-    if (/materiais_prn/.test(msg)) return 'Já existe um material com este PRN.';
+    if (/materiais_prn/.test(msg)) return 'Já existe um material com este PRN neste centro de custo.';
     if (/materiais_posicao/.test(msg)) return 'Essa posição já está ocupada por outro material. Escolha outra ou use "Sugerir posição livre".';
     if (/depositos_numero/.test(msg)) return 'Já existe um depósito com esse número nesta unidade.';
     if (/unidades_nome/.test(msg)) return 'Já existe uma unidade com esse nome.';

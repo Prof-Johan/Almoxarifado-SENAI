@@ -40,7 +40,7 @@ function cabecalhoEtiqueta(d) {
 
 function etiquetaHtml(m, qr, formato, impressoPor) {
   const d = dadosEtiqueta(m);
-  const rodape = `Impressa em ${fmtData(new Date())}${impressoPor ? ' por ' + esc(impressoPor) : ''}`;
+  const rodape = `${d.centro ? `CC ${esc(d.centro)} · ` : ''}Impressa em ${fmtData(new Date())}${impressoPor ? ' por ' + esc(impressoPor) : ''}`;
   const dados = `
     <div class="campos">
       <div><span>PRN</span><b>${esc(d.prn)}</b></div>

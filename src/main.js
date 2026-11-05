@@ -1,3 +1,10 @@
+import '@fontsource/archivo/latin-600.css';
+import '@fontsource/archivo/latin-700.css';
+import '@fontsource/archivo/latin-800.css';
+import '@fontsource/source-code-pro/latin-400.css';
+import '@fontsource/source-code-pro/latin-500.css';
+import '@fontsource/source-code-pro/latin-600.css';
+import '@fontsource/source-code-pro/latin-700.css';
 import './style.css';
 import './app.css';
 import './senai.css';
@@ -22,6 +29,8 @@ import * as inventarios from './pages/inventarios.js';
 import * as relatorios from './pages/relatorios.js';
 import { mostrarAtalhos } from './lib/atalhos.js';
 import { iniciarOffline } from './lib/offline.js';
+import { tocarClique } from './lib/clique.js';
+import { iniciarNotificacoes, trocarRota } from './lib/notificacoes.js';
 
 // Páginas e o nível mínimo de perfil para ver cada uma.
 const ROTAS = {
@@ -57,6 +66,7 @@ function montarLayout() {
   $('#raiz').innerHTML = `
     <div class="app">
       <aside class="sidebar">
+        <button class="alca alca-lateral" type="button" id="alcaLateral" aria-label="Recolher o menu" title="Recolher o menu">‹</button>
         <div class="brand">
           <img class="brand-logo" src="/senai-logo-branco.png" alt="SENAI" width="132" height="38">
           <h1>Almoxarifado Inteligente</h1><small>Projeto SENAI · Klabin</small>
@@ -66,6 +76,7 @@ function montarLayout() {
       </aside>
       <div class="main">
         <header class="topbar">
+          <button class="alca alca-topo" type="button" id="alcaTopo" aria-label="Recolher a barra do topo" title="Recolher a barra do topo">˄</button>
           <div class="top-title-group">
             <div class="top-title" id="topTitle"></div>
             <select class="mobile-nav" id="mobileNav" aria-label="Ir para a página"></select>
@@ -90,6 +101,7 @@ function montarLayout() {
   $('#btnConta').addEventListener('click', () => abrirMinhaConta());
   $('#btnSair').addEventListener('click', () => sair());
   $('#btnAtalhos').addEventListener('click', mostrarAtalhos);
+  ligarBarrasRecolhiveis();
   aplicarTema();
   aoMudarConexao(conectado => {
     const marca = $('#aoVivo');
@@ -98,6 +110,78 @@ function montarLayout() {
     marca.querySelector('.texto').textContent = conectado ? 'Ao vivo' : 'Reconectando';
     marca.title = conectado ? 'As telas se atualizam sozinhas quando alguém muda algo.' : 'Sem atualização automática no momento. Tentando reconectar.';
   });
+}
+
+// ---------------------------------------------------------------------
+// Barras lateral e do topo recolhíveis, com movimento e som de clique.
+// ---------------------------------------------------------------------
+const BARRAS = {
+  lateral: { classe: 'lateral', alca: 'alcaLateral', aberta: '‹', fechada: '›', rotulo: ['Recolher o menu', 'Abrir o menu'] },
+  topo: { classe: 'topo', alca: 'alcaTopo', aberta: '˄', fechada: '˅', rotulo: ['Recolher a barra do topo', 'Abrir a barra do topo'] },
+};
+
+function atualizarAlca(nome, fechada) {
+  const b = BARRAS[nome];
+  const alca = $('#' + b.alca);
+  if (!alca) return;
+  alca.textContent = fechada ? b.fechada : b.aberta;
+  alca.setAttribute('aria-label', b.rotulo[fechada ? 1 : 0]);
+  alca.title = b.rotulo[fechada ? 1 : 0];
+  alca.setAttribute('aria-expanded', String(!fechada));
+}
+
+function alternarBarra(nome) {
+  const app = $('.app');
+  const b = BARRAS[nome];
+  if (!app || app.classList.contains(`${b.classe}-abrindo`) || app.classList.contains(`${b.classe}-fechando`)) return;
+  if (nome === 'topo') app.style.setProperty('--altura-topo', `${$('.topbar').offsetHeight}px`);
+  const fechada = app.classList.contains(`${b.classe}-${nome === 'topo' ? 'fechado' : 'fechada'}`);
+  const estadoFechado = `${b.classe}-${nome === 'topo' ? 'fechado' : 'fechada'}`;
+  const animacao = `${b.classe}-${fechada ? 'abrindo' : 'fechando'}`;
+  tocarClique(1);
+  app.classList.remove(estadoFechado);
+  app.classList.add(animacao);
+  const alvo = $(nome === 'topo' ? '.topbar' : '.sidebar');
+  alvo.addEventListener('animationend', () => {
+    app.classList.remove(animacao);
+    if (!fechada) app.classList.add(estadoFechado);
+    tocarClique(0.6);
+    localStorage.setItem(`almox-barra-${nome}`, fechada ? 'aberta' : 'fechada');
+    atualizarAlca(nome, !fechada);
+  }, { once: true });
+}
+
+function ligarBarrasRecolhiveis() {
+  const app = $('.app');
+  for (const nome of Object.keys(BARRAS)) {
+    const fechada = localStorage.getItem(`almox-barra-${nome}`) === 'fechada';
+    if (fechada) {
+      if (nome === 'topo') requestAnimationFrame(() => app.style.setProperty('--altura-topo', `${$('.topbar').offsetHeight}px`));
+      app.classList.add(nome === 'topo' ? 'topo-fechado' : 'lateral-fechada');
+    }
+    atualizarAlca(nome, fechada);
+    $('#' + BARRAS[nome].alca).addEventListener('click', () => alternarBarra(nome));
+  }
+}
+
+// Contadores de novidades nos itens do menu.
+let contagens = {};
+function aplicarSelos() {
+  for (const botao of document.querySelectorAll('#nav [data-rota]')) {
+    const n = contagens[botao.dataset.rota] || 0;
+    let selo = botao.querySelector('.selo');
+    if (!selo) { selo = document.createElement('span'); selo.className = 'selo'; botao.appendChild(selo); }
+    selo.hidden = !n;
+    selo.textContent = n > 99 ? '99+' : String(n);
+    botao.setAttribute('aria-label', n ? `${botao.firstChild.textContent}, ${n} novidade(s)` : botao.firstChild.textContent);
+  }
+  for (const opcao of document.querySelectorAll('#mobileNav option')) {
+    const n = contagens[opcao.value] || 0;
+    opcao.textContent = opcao.dataset.rotulo + (n ? ` (${n})` : '');
+  }
+  const total = Object.values(contagens).reduce((a, b) => a + b, 0);
+  document.title = document.title.replace(/^\(\d+\+?\)\s/, '');
+  if (total) document.title = `(${total > 99 ? '99+' : total}) ${document.title}`;
 }
 
 let renderizacao = 0;
@@ -116,10 +200,12 @@ async function desenharPagina() {
     .map(([id, r]) => `<button type="button" data-rota="${id}" class="${id === atual ? 'active' : ''}" ${id === atual ? 'aria-current="page"' : ''}>${r.rotulo}</button>`)
     .join('');
   $('#mobileNav').innerHTML = permitidas
-    .map(([id, r]) => `<option value="${id}" ${id === atual ? 'selected' : ''}>${r.rotulo}</option>`)
+    .map(([id, r]) => `<option value="${id}" data-rotulo="${r.rotulo}" ${id === atual ? 'selected' : ''}>${r.rotulo}</option>`)
     .join('');
   $('#topTitle').textContent = rota.titulo;
   document.title = `${rota.rotulo} · Almoxarifado Inteligente`;
+  trocarRota(atual, permitidas.map(([id]) => id));
+  aplicarSelos();
 
   // Cada página ganha um elemento novo, para os eventos não se acumularem.
   const pagina = document.createElement('div');
@@ -186,6 +272,7 @@ async function abrirSistema() {
   iniciarTempoReal();
   ouvirMeuPerfil();
   montarLayout();
+  iniciarNotificacoes(estado.perfil.id, rotasPermitidas().map(([id]) => id), novas => { contagens = novas; aplicarSelos(); });
   await desenharPagina();
 }
 
