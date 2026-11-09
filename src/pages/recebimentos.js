@@ -4,7 +4,7 @@ import { nivel } from '../lib/permissoes.js';
 import { buscarTodos, atualizarRegistro } from '../lib/dados.js';
 import { ouvir } from '../lib/tempoReal.js';
 import { estado } from '../lib/sessao.js';
-import { codigoLocalizacao, dadosEtiqueta, fmtQtd, termoBusca, textoBusca } from '../lib/materiais.js';
+import { codigoLocalizacao, dadosEtiqueta, erroInteiro, fmtQtd, passoQtd, termoBusca, textoBusca } from '../lib/materiais.js';
 import { enviarArquivo, prepararImagem, extensao, abrirArquivoPrivado } from '../lib/arquivos.js';
 import { FORMATOS, abrirJanelaEtiquetas, montarEtiquetas } from '../lib/etiquetas.js';
 
@@ -253,6 +253,8 @@ export async function montar(el, ctx) {
         const m = acharMaterial(texto);
         if (!m) return falhar(`Material não encontrado: "${texto}". Escolha um da lista.`);
         if (!(qtd > 0)) return falhar(`Informe a quantidade na nota de ${m.nome}.`);
+        const quebrado = erroInteiro(qtd, m.unidade_medida, m.nome, 'A quantidade na nota');
+        if (quebrado) return falhar(quebrado);
         if (itens.some(i => i.material_id === m.id)) return falhar(`${m.nome} aparece duas vezes. Some as quantidades em uma linha só.`);
         itens.push({ material_id: m.id, quantidade_nf: qtd });
       }
@@ -349,7 +351,7 @@ export async function montar(el, ctx) {
             <td><span class="link-material"><span class="barra-classe" style="background:${esc(m?.classe?.cor || '#ccc')}"></span><span><b>${esc(m?.nome || 'Material removido')}</b><span class="small muted">${esc(m?.codigo || '')} · PRN ${esc(m?.prn || '')}</span></span></span></td>
             <td><span class="codigo-local">${esc(m?.local || '')}</span></td>
             <td class="nowrap">${fmtQtd(i.quantidade_nf)} ${esc(m?.unidade_medida || '')}</td>
-            <td>${editavel ? `<input class="conf-qtd" type="number" min="0" step="any" value="${conferida ?? ''}" aria-label="Quantidade conferida de ${esc(m?.nome || '')}">` : conferida === null ? '<span class="muted">Não conferida</span>' : `${fmtQtd(conferida)} ${esc(m?.unidade_medida || '')}`}</td>
+            <td>${editavel ? `<input class="conf-qtd" type="number" min="0" step="${passoQtd(m?.unidade_medida)}" value="${conferida ?? ''}" aria-label="Quantidade conferida de ${esc(m?.nome || '')}">` : conferida === null ? '<span class="muted">Não conferida</span>' : `${fmtQtd(conferida)} ${esc(m?.unidade_medida || '')}`}</td>
             <td class="nowrap conf-dif ${dif === null ? '' : dif === 0 ? 'positivo' : 'negativo'}">${dif === null ? '—' : dif === 0 ? 'Confere' : `${dif > 0 ? '+' : ''}${fmtQtd(dif)}`}</td>
             <td>${editavel ? `<input class="conf-obs" maxlength="160" value="${esc(i.observacao || '')}" placeholder="Ex.: 2 caixas amassadas" aria-label="Observação">` : esc(i.observacao || '')}</td>
             ${editavel ? `<td><button class="btn btn-ghost btn-sm" type="button" data-tirar-item="${i.id}" aria-label="Tirar item">×</button></td>` : ''}
@@ -476,6 +478,9 @@ export async function montar(el, ctx) {
         const valor = $('.conf-qtd', linha).value;
         const dados = { quantidade_conferida: valor === '' ? null : Number(valor), observacao: $('.conf-obs', linha).value.trim() || null };
         if (dados.quantidade_conferida !== null && (Number.isNaN(dados.quantidade_conferida) || dados.quantidade_conferida < 0)) throw new Error('A quantidade conferida não pode ser negativa.');
+        const mat = porId.materiais.get(item.material_id);
+        const quebrado = erroInteiro(dados.quantidade_conferida, mat?.unidade_medida, mat?.nome, 'A quantidade conferida');
+        if (quebrado) throw new Error(quebrado);
         if (dados.quantidade_conferida === item.quantidade_conferida && (dados.observacao || null) === (item.observacao || null)) return null;
         return atualizarRegistro('recebimento_itens', item.id, dados);
       }).filter(Boolean);
@@ -535,6 +540,8 @@ export async function montar(el, ctx) {
         const qtd = Number($('#addQtd', corpo).value);
         if (!m) return falhar('Escolha o material na lista.');
         if (!(qtd > 0)) return falhar('Informe a quantidade na nota.');
+        const quebrado = erroInteiro(qtd, m.unidade_medida, m.nome, 'A quantidade na nota');
+        if (quebrado) return falhar(quebrado);
         if (editado) await salvarConferencia().catch(() => {});
         const { error } = await supabase.from('recebimento_itens').insert({ recebimento_id: r.id, material_id: m.id, quantidade_nf: qtd });
         if (error) return falhar(/material_unico/.test(error.message) ? 'Este material já está no recebimento.' : erroAmigavel(error));

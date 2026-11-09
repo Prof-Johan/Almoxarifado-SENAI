@@ -8,6 +8,7 @@ Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com 
 - **Entrega 4 (versão completa):** pedidos pelo setor, aprovação, separação por endereço, retirada com PRN ou foto, devolução, prazo de retirada, inventário periódico, relatórios em Excel, relatório semanal automático, rotatividade, modo offline e atalhos de teclado.
 - **Entrega 5 (ajustes dos testadores):** comprovante de retirada em cupom de 80 mm ou A4, contadores de novidades no menu, estoque por setor e centro de custo, fontes Archivo e Source Code Pro, tons pastéis do SENAI e barras de vidro recolhíveis.
 - **Entrega 6 (ajustes dos testadores):** PRN do usuário com 8 dígitos no lugar da matrícula, retirada confirmada só pelo PRN, o antigo PRN do material passa a se chamar código SAP, e-mail e PRN de usuário removido podem ser reaproveitados, lista de pedidos com a unidade de medida no lugar do peso e título da página só na barra do topo.
+- **Entrega 7 (correção urgente):** materiais contados em unidade, peça, caixa, rolo e afins só aceitam números inteiros em pedido, separação, retirada, devolução, recebimento, inventário, ajuste e cadastro. Só metro, quilo, grama, litro e mililitro aceitam vírgula.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
 
@@ -60,12 +61,14 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 5 no ar?** Rode o `supabase/migrations/0006_prn_usuarios.sql` no SQL Editor, publique de novo a função `gerenciar-usuario` (o `index.ts` mudou) e envie os arquivos novos para o GitHub. No fim, o script mostra os usuários sem PRN ou com PRN fora do padrão de 8 dígitos: corrija cada um em **Usuários**. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
+> **Já tem a entrega 6 no ar?** Rode o `supabase/migrations/0007_quantidade_inteira.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. No fim, o script lista os materiais com saldo quebrado (por exemplo, 9,6 rolamentos) e os pedidos em aberto com quantidade quebrada: corrija o saldo com **Ajustar saldo** e cancele esses pedidos para serem feitos de novo.
+>
+> **Ainda na entrega 5?** Rode antes o `0006_prn_usuarios.sql` e publique de novo a função `gerenciar-usuario`, como explicado na entrega 6. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
 
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql`, `0004_pedidos_relatorios.sql`, `0005_centro_custo.sql` e `0006_prn_usuarios.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql`, `0004_pedidos_relatorios.sql`, `0005_centro_custo.sql`, `0006_prn_usuarios.sql` e `0007_quantidade_inteira.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -174,6 +177,7 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 21. Confirme uma retirada e imprima o comprovante em cupom e em A4.
 22. Deixe o sistema aberto em Materiais e peça para alguém criar um pedido: o número aparece no item Pedidos do menu.
 23. Tente criar um usuário com PRN de 7 dígitos: o sistema recusa. Remova um usuário e crie outro com o mesmo e-mail e o mesmo PRN: agora funciona. Tente restaurar o removido: o sistema avisa que o e-mail já está em uso.
+24. Peça 0,4 de um rolamento (contado em unidade): o sistema recusa. Peça 0,4 kg de graxa: aceita.
 
 ## Etiquetas
 
@@ -279,6 +283,7 @@ supabase/migrations/0003_recebimento.sql  Recebimento, conferência, divergênci
 supabase/migrations/0004_pedidos_relatorios.sql  Pedidos, retirada, devolução, inventário, rotatividade e relatório semanal
 supabase/migrations/0005_centro_custo.sql  Estoque por setor e centro de custo
 supabase/migrations/0006_prn_usuarios.sql  PRN do usuário, retirada pelo PRN e e-mail reaproveitável
+supabase/migrations/0007_quantidade_inteira.sql  Quantidade inteira para itens que não se dividem
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```

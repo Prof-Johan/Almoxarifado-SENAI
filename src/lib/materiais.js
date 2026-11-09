@@ -6,6 +6,22 @@ export const UNIDADES_MEDIDA = {
   fr: 'Frasco', rs: 'Resma', m: 'Metro', kg: 'Quilo', g: 'Grama', L: 'Litro', mL: 'Mililitro',
 };
 
+// Só estas unidades aceitam número com vírgula. As outras (unidade, peça,
+// caixa, rolo...) são contadas inteiras: não existe 0,4 rolamento.
+// A mesma regra está no banco (0007_quantidade_inteira.sql).
+const FRACIONAVEIS = ['m', 'kg', 'g', 'l', 'ml'];
+export const fracionavel = unidade => FRACIONAVEIS.includes(String(unidade || '').trim().toLowerCase());
+export const passoQtd = unidade => (fracionavel(unidade) ? 'any' : '1');
+
+// Devolve a mensagem de erro, ou '' quando a quantidade está certa.
+export function erroInteiro(qtd, unidade, nome = 'o material', campo = 'A quantidade') {
+  const n = Number(qtd);
+  if (qtd === '' || qtd === null || qtd === undefined || Number.isNaN(n) || fracionavel(unidade) || Number.isInteger(n)) return '';
+  const chave = Object.keys(UNIDADES_MEDIDA).find(k => k.toLowerCase() === String(unidade || '').toLowerCase());
+  const rotulo = chave ? `${UNIDADES_MEDIDA[chave].toLowerCase()} (${unidade})` : unidade;
+  return `${campo} de ${nome} precisa ser um número inteiro: o material é contado em ${rotulo}, que não se divide.`;
+}
+
 export const CRITICIDADES = {
   BAIXA: { rotulo: 'Baixa', classe: 'gray' },
   MEDIA: { rotulo: 'Média', classe: 'blue' },

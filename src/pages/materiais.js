@@ -10,7 +10,7 @@ import { estado } from '../lib/sessao.js';
 import {
   UNIDADES_MEDIDA, CRITICIDADES, TIPOS_MOVIMENTO, TIPOS_ARMAZENAGEM, fmtQtd, nomeDeposito,
   codigoLocalizacao, embalagemTexto, situacaoEstoque, dadosEtiqueta, etiquetaPendente,
-  pillCor, textoBusca, termoBusca,
+  pillCor, textoBusca, termoBusca, erroInteiro, passoQtd,
 } from '../lib/materiais.js';
 import { prepararImagem, enviarArquivo, apagarArquivo, urlArquivo } from '../lib/arquivos.js';
 import { FORMATOS, abrirJanelaEtiquetas, montarEtiquetas } from '../lib/etiquetas.js';
@@ -459,9 +459,9 @@ export async function montar(el, ctx) {
         </div>
         <div class="form-section"><h3>Estoque</h3>
           <div class="fields campos-3">
-            ${m ? '' : `<div class="field"><label for="mSaldo">Saldo inicial *</label><input id="mSaldo" type="number" min="0" step="any" value="0"></div>`}
-            <div class="field"><label for="mMinimo">Estoque mínimo *</label><input id="mMinimo" type="number" min="0" step="any" value="${esc(inicial.estoque_minimo ?? 0)}"></div>
-            <div class="field"><label for="mEmergencial">Saldo emergencial</label><input id="mEmergencial" type="number" min="0" step="any" value="${esc(inicial.saldo_emergencial ?? 0)}"><small class="dica">Reserva para urgências.</small></div>
+            ${m ? '' : `<div class="field"><label for="mSaldo">Saldo inicial *</label><input id="mSaldo" type="number" min="0" step="${passoQtd(inicial.unidade_medida || 'un')}" value="0"></div>`}
+            <div class="field"><label for="mMinimo">Estoque mínimo *</label><input id="mMinimo" type="number" min="0" step="${passoQtd(inicial.unidade_medida || 'un')}" value="${esc(inicial.estoque_minimo ?? 0)}"></div>
+            <div class="field"><label for="mEmergencial">Saldo emergencial</label><input id="mEmergencial" type="number" min="0" step="${passoQtd(inicial.unidade_medida || 'un')}" value="${esc(inicial.saldo_emergencial ?? 0)}"><small class="dica">Reserva para urgências.</small></div>
             <div class="field"><label for="mCriticidade">Criticidade *</label><select id="mCriticidade">${Object.entries(CRITICIDADES).map(([v, c]) => `<option value="${v}" ${(inicial.criticidade || 'MEDIA') === v ? 'selected' : ''}>${c.rotulo}</option>`).join('')}</select></div>
             <div class="field wide"><label for="mEmbQtd">Embalagem (opcional)</label>
               <div class="linha-embalagem"><span>1 <b id="mUnidadeTexto">${esc(inicial.unidade_medida || 'un')}</b> contém</span>
@@ -621,7 +621,10 @@ export async function montar(el, ctx) {
       if (id === 'mUnidadeFilial') { unidadeAtual = Number(e.target.value); campo('mDeposito').value = ''; preencherDepositos(); }
       if (id === 'mDeposito') preencherPosicoes({ prat: 1, lado: '', andar: 1, pos: 1 });
       if (['mPrat', 'mLado', 'mAndar', 'mPos', 'mCriticidade'].includes(id)) atualizarLocal();
-      if (id === 'mUnidade') campo('mUnidadeTexto').textContent = e.target.value;
+      if (id === 'mUnidade') {
+        campo('mUnidadeTexto').textContent = e.target.value;
+        ['mSaldo', 'mMinimo', 'mEmergencial'].forEach(c => { if (campo(c)) campo(c).step = passoQtd(e.target.value); });
+      }
     });
     fundo.addEventListener('input', e => { if (e.target.id === 'mPeso') atualizarLocal(); });
     fundo.addEventListener('click', e => {
@@ -700,11 +703,18 @@ export async function montar(el, ctx) {
       if (!dados.classe_id) return falhar('Escolha a classe do material.');
       if (!dados.deposito_id) return falhar('Escolha o depósito.');
       if ([dados.estoque_minimo, dados.saldo_emergencial, dados.peso_kg ?? 0].some(n => Number.isNaN(n) || n < 0)) return falhar('Os números não podem ser negativos.');
+      const nomeMat = dados.nome || 'o material';
+      const quebrado = erroInteiro(dados.estoque_minimo, dados.unidade_medida, nomeMat, 'O estoque mínimo')
+        || erroInteiro(dados.saldo_emergencial, dados.unidade_medida, nomeMat, 'O saldo emergencial')
+        || (m && m.unidade_medida !== dados.unidade_medida ? erroInteiro(m.saldo, dados.unidade_medida, nomeMat, 'O saldo atual') : '');
+      if (quebrado) return falhar(quebrado);
       const bloqueio = atualizarLocal();
       if (bloqueio) return falhar(bloqueio.replace(/<[^>]+>/g, ''));
       if (!m) {
         dados.saldo = valorNum('mSaldo') ?? 0;
         if (Number.isNaN(dados.saldo) || dados.saldo < 0) return falhar('O saldo inicial não pode ser negativo.');
+        const saldoQuebrado = erroInteiro(dados.saldo, dados.unidade_medida, nomeMat, 'O saldo inicial');
+        if (saldoQuebrado) return falhar(saldoQuebrado);
       }
       erro.hidden = true;
       const foto = campo('mFoto').files[0];
@@ -773,7 +783,7 @@ export async function montar(el, ctx) {
       corpo: `<form id="formAjuste" novalidate>
         <p>Saldo atual: <b>${fmtQtd(m.saldo)} ${esc(m.unidade_medida)}</b></p>
         <div class="fields">
-          <div class="field"><label for="aNovo">Novo saldo *</label><input id="aNovo" type="number" min="0" step="any" value="${esc(m.saldo)}"></div>
+          <div class="field"><label for="aNovo">Novo saldo *</label><input id="aNovo" type="number" min="0" step="${passoQtd(m.unidade_medida)}" value="${esc(m.saldo)}"></div>
           <div class="field"><label>Diferença</label><div class="previa-classe"><b id="aDiferenca">0</b></div></div>
           <div class="field wide"><label for="aMotivo">Motivo *</label><textarea id="aMotivo" rows="3" maxlength="300" placeholder="Ex.: contagem do inventário de novembro, divergência registrada no relatório 12"></textarea></div>
         </div>
@@ -791,6 +801,8 @@ export async function montar(el, ctx) {
     $('#formAjuste', fundo).addEventListener('submit', async e => {
       e.preventDefault();
       const erro = $('#aErro', fundo);
+      const quebrado = erroInteiro(novo.value, m.unidade_medida, m.nome, 'O novo saldo');
+      if (quebrado) { erro.textContent = quebrado; erro.hidden = false; return; }
       await executando(e.submitter, async () => {
         const { error } = await supabase.rpc('ajustar_saldo', { p_material: m.id, p_novo_saldo: Number(novo.value), p_motivo: $('#aMotivo', fundo).value.trim() });
         if (error) { erro.textContent = erroAmigavel(error); erro.hidden = false; return; }
@@ -811,7 +823,7 @@ export async function montar(el, ctx) {
       pequeno: true,
       corpo: `<form id="formDev" novalidate>
         <div class="fields">
-          <div class="field"><label for="dQtd">Quantidade devolvida (${esc(m.unidade_medida)}) *</label><input id="dQtd" type="number" min="0" step="any"></div>
+          <div class="field"><label for="dQtd">Quantidade devolvida (${esc(m.unidade_medida)}) *</label><input id="dQtd" type="number" min="0" step="${passoQtd(m.unidade_medida)}"></div>
           <div class="field wide"><label for="dMotivo">Motivo *</label><input id="dMotivo" maxlength="160" placeholder="Ex.: sobrou na manutenção da linha 2"></div>
         </div>
         <p class="small muted">Se o material saiu por um pedido, prefira devolver pelo próprio pedido, na página Pedidos.</p>
@@ -821,6 +833,8 @@ export async function montar(el, ctx) {
     });
     $('#formDev', fundo).addEventListener('submit', async e => {
       e.preventDefault();
+      const quebrado = erroInteiro($('#dQtd', fundo).value, m.unidade_medida, m.nome, 'A quantidade devolvida');
+      if (quebrado) { const x = $('#dErro', fundo); x.textContent = quebrado; x.hidden = false; return; }
       await executando(e.submitter, async () => {
         const { error } = await supabase.rpc('registrar_devolucao', { p_material: m.id, p_quantidade: Number($('#dQtd', fundo).value), p_motivo: $('#dMotivo', fundo).value });
         if (error) { const x = $('#dErro', fundo); x.textContent = erroAmigavel(error); x.hidden = false; return; }

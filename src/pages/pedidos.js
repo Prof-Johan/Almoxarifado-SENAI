@@ -4,7 +4,7 @@ import { nivel } from '../lib/permissoes.js';
 import { buscarTodos } from '../lib/dados.js';
 import { ouvir } from '../lib/tempoReal.js';
 import { estado } from '../lib/sessao.js';
-import { codigoLocalizacao, fmtQtd, termoBusca, textoBusca } from '../lib/materiais.js';
+import { codigoLocalizacao, erroInteiro, fmtQtd, fracionavel, passoQtd, termoBusca, textoBusca } from '../lib/materiais.js';
 import { enviarArquivo, prepararImagem, extensao, abrirArquivoPrivado } from '../lib/arquivos.js';
 import { FORMATOS_COMPROVANTE, abrirJanelaComprovante, montarComprovante } from '../lib/comprovante.js';
 
@@ -275,7 +275,11 @@ export async function montar(el, ctx) {
         const qtd = Number($('.item-qtd', linha).value) || 0;
         const info = $('.item-info', linha);
         $('.item-material', linha).classList.toggle('invalido', Boolean($('.item-material', linha).value.trim()) && !m);
+        $('.item-qtd', linha).step = passoQtd(m?.unidade_medida);
+        const quebrado = m ? erroInteiro($('.item-qtd', linha).value, m.unidade_medida, m.nome) : '';
+        $('.item-qtd', linha).classList.toggle('invalido', Boolean(quebrado));
         if (!m) { info.textContent = ''; return; }
+        if (quebrado) { info.innerHTML = `<b class="negativo">${esc(quebrado)}</b>`; return; }
         const bloqueio = bloqueioSetor(m, $('#pSetor', fundo).value);
         if (bloqueio) { info.innerHTML = `<b class="negativo">Não pode ser pedido: ${esc(bloqueio)}.</b>`; return; }
         const normal = Math.max(m.disponivel - Number(m.saldo_emergencial), 0);
@@ -325,6 +329,8 @@ export async function montar(el, ctx) {
         const qtd = Number($('.item-qtd', linha).value);
         if (!m) return falhar(`Material não encontrado: "${texto}". Escolha um da lista.`);
         if (!(qtd > 0)) return falhar(`Informe a quantidade de ${m.nome}.`);
+        const quebrado = erroInteiro(qtd, m.unidade_medida, m.nome);
+        if (quebrado) return falhar(quebrado);
         const bloqueio = bloqueioSetor(m, $('#pSetor', fundo).value);
         if (bloqueio) return falhar(`${m.nome} não pode ser pedido: ${bloqueio}.`);
         if (qtd > m.disponivel) return falhar(`${m.nome}: há só ${fmtQtd(m.disponivel)} ${m.unidade_medida} disponível(is).`);
@@ -398,13 +404,14 @@ export async function montar(el, ctx) {
         <thead><tr><th>Endereço</th><th>Material</th><th>Motivo</th><th>Pedido</th><th>${separando ? 'Separar' : 'Separado'}</th>${retirado ? '<th>Entregue</th><th>Devolvido</th><th></th>' : ''}</tr></thead>
         <tbody>${itens.map(i => {
           const m = porId.materiais.get(i.material_id);
-          const maximo = Math.min(Number(i.quantidade), Number(m?.saldo || 0) - (Number(m?.reservado || 0) - Number(i.quantidade)));
+          const bruto = Math.min(Number(i.quantidade), Number(m?.saldo || 0) - (Number(m?.reservado || 0) - Number(i.quantidade)));
+          const maximo = fracionavel(m?.unidade_medida) ? bruto : Math.floor(bruto);
           return `<tr data-item="${i.id}">
             <td><span class="codigo-local">${esc(m?.local || '')}</span></td>
             <td><span class="link-material"><span class="barra-classe" style="background:${esc(m?.classe?.cor || '#ccc')}"></span><span><b>${esc(m?.nome || 'Material removido')}</b><span class="small muted">${esc(m?.codigo || '')}${m?.unidade_medida ? ` · ${esc(m.unidade_medida)}` : ''}</span></span></span></td>
             <td class="small">${CATEGORIAS[i.categoria]}</td>
             <td class="nowrap">${fmtQtd(i.quantidade)} ${esc(m?.unidade_medida || '')}</td>
-            <td class="nowrap">${separando ? `<input class="sep-qtd" type="number" min="0" max="${i.quantidade}" step="any" value="${i.quantidade_separada ?? Math.max(Math.min(i.quantidade, maximo), 0)}" aria-label="Quantidade separada">` : i.quantidade_separada === null ? '—' : fmtQtd(i.quantidade_separada)}</td>
+            <td class="nowrap">${separando ? `<input class="sep-qtd" type="number" min="0" max="${i.quantidade}" step="${passoQtd(m?.unidade_medida)}" value="${i.quantidade_separada ?? Math.max(Math.min(i.quantidade, maximo), 0)}" aria-label="Quantidade separada">` : i.quantidade_separada === null ? '—' : fmtQtd(i.quantidade_separada)}</td>
             ${retirado ? `<td>${fmtQtd(i.quantidade_entregue ?? 0)}</td><td>${fmtQtd(i.quantidade_devolvida)}</td>
               <td>${pode.operar && Number(i.quantidade_devolvida) < Number(i.quantidade_entregue || 0) ? `<button class="btn btn-ghost btn-sm" type="button" data-devolver="${i.id}">Devolver</button>` : ''}</td>` : ''}
           </tr>`;
@@ -544,6 +551,7 @@ export async function montar(el, ctx) {
         const painel = $('#painelDevolucao', corpo);
         painel.hidden = false;
         $('#devQtd', corpo).value = Number(devolvendo.quantidade_entregue) - Number(devolvendo.quantidade_devolvida);
+        $('#devQtd', corpo).step = passoQtd(porId.materiais.get(devolvendo.material_id)?.unidade_medida);
         painel.scrollIntoView({ block: 'center' });
         return;
       }
@@ -580,6 +588,11 @@ export async function montar(el, ctx) {
           }
           if (acao === 'separar') {
             const itens = $$('tr[data-item]', corpo).map(l => ({ id: Number(l.dataset.item), quantidade_separada: Number($('.sep-qtd', l).value) }));
+            for (const it of itens) {
+              const mat = porId.materiais.get(itensDe(p).find(i => i.id === it.id)?.material_id);
+              const quebrado = erroInteiro(it.quantidade_separada, mat?.unidade_medida, mat?.nome, 'A quantidade separada');
+              if (quebrado) return falhar(quebrado);
+            }
             const { error } = await supabase.rpc('separar_pedido', { p_pedido: p.id, p_itens: itens });
             if (error) throw error;
             refazendo = false;
@@ -590,6 +603,9 @@ export async function montar(el, ctx) {
             return await entregar(metodo);
           }
           if (acao === 'confirmar-devolucao') {
+            const mat = porId.materiais.get(devolvendo.material_id);
+            const quebrado = erroInteiro($('#devQtd', corpo).value, mat?.unidade_medida, mat?.nome, 'A quantidade devolvida');
+            if (quebrado) return falhar(quebrado);
             const { error } = await supabase.rpc('registrar_devolucao', {
               p_material: devolvendo.material_id, p_quantidade: Number($('#devQtd', corpo).value), p_motivo: $('#devMotivo', corpo).value, p_pedido_item: devolvendo.id,
             });

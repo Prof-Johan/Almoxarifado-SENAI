@@ -3,7 +3,7 @@ import { $, $$, esc, cabecalho, abrirModal, aoFecharModal, fecharModal, executan
 import { nivel } from '../lib/permissoes.js';
 import { buscarTodos, atualizarRegistro } from '../lib/dados.js';
 import { ouvir } from '../lib/tempoReal.js';
-import { codigoLocalizacao, nomeDeposito, fmtQtd } from '../lib/materiais.js';
+import { codigoLocalizacao, nomeDeposito, fmtQtd, erroInteiro, passoQtd } from '../lib/materiais.js';
 import { baixarExcel, dataHora } from '../lib/excel.js';
 
 const STATUS = {
@@ -142,7 +142,7 @@ export async function montar(el, ctx) {
               <td><span class="codigo-local">${esc(m.local || '')}</span></td>
               <td><b>${esc(m.nome || '')}</b><div class="small muted">${esc(m.codigo || '')} · ${esc(m.unidade_medida || '')}</div></td>
               ${mostrarSistema ? `<td>${fmtQtd(i.saldo_sistema)}</td>` : ''}
-              <td>${editavel ? `<input class="inv-qtd" type="number" min="0" step="any" value="${i.quantidade_contada ?? ''}" aria-label="Quantidade contada">` : i.quantidade_contada === null ? '—' : fmtQtd(i.quantidade_contada)}</td>
+              <td>${editavel ? `<input class="inv-qtd" type="number" min="0" step="${passoQtd(m.unidade_medida)}" value="${i.quantidade_contada ?? ''}" aria-label="Quantidade contada">` : i.quantidade_contada === null ? '—' : fmtQtd(i.quantidade_contada)}</td>
               ${mostrarSistema ? `<td class="${dif === null ? '' : dif === 0 ? 'positivo' : 'negativo'}">${dif === null ? '—' : dif === 0 ? 'Confere' : (dif > 0 ? '+' : '') + fmtQtd(dif)}</td>` : ''}
               <td>${editavel ? `<input class="inv-obs" maxlength="160" value="${esc(i.observacao || '')}" placeholder="Ex.: caixa amassada">` : esc(i.observacao || '')}</td>
             </tr>`;
@@ -166,6 +166,9 @@ export async function montar(el, ctx) {
         const item = itensDe(inv).find(i => String(i.id) === l.dataset.item);
         const v = $('.inv-qtd', l).value;
         const dados = { quantidade_contada: v === '' ? null : Number(v), observacao: $('.inv-obs', l).value.trim() || null };
+        const mat = materiais.get(item.material_id);
+        const quebrado = erroInteiro(dados.quantidade_contada, mat?.unidade_medida, mat?.nome, 'A quantidade contada');
+        if (quebrado) throw new Error(quebrado);
         if (dados.quantidade_contada === (item.quantidade_contada === null ? null : Number(item.quantidade_contada)) && dados.observacao === (item.observacao || null)) return null;
         return atualizarRegistro('inventario_itens', item.id, dados);
       }).filter(Boolean);
