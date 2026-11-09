@@ -23,7 +23,7 @@ const SITUACOES = {
 };
 
 const CAMPOS_HISTORICO = {
-  nome: 'Nome', prn: 'PRN', descricao: 'Descrição', marca: 'Marca', classe_id: 'Classe',
+  nome: 'Nome', prn: 'Código SAP', descricao: 'Descrição', marca: 'Marca', classe_id: 'Classe',
   unidade_medida: 'Unidade', embalagem_qtd: 'Embalagem', embalagem_unidade: 'Embalagem',
   estoque_minimo: 'Estoque mínimo', criticidade: 'Criticidade', saldo_emergencial: 'Saldo emergencial',
   peso_kg: 'Peso', epi: 'EPI', deposito_id: 'Depósito', prateleira: 'Prateleira', lado: 'Lado',
@@ -163,7 +163,7 @@ export async function montar(el, ctx) {
             <span class="barra-classe" style="background:${esc(m.classe?.cor || '#ccc')}" aria-hidden="true"></span>
             <span><b>${esc(m.nome)}</b>
             ${m.descricao ? `<span class="desc-linha">${esc(m.descricao)}</span>` : ''}
-            <span class="small muted">PRN ${esc(m.prn)} · ${esc(m.codigo)} · ${esc(m.classe?.nome || '')}</span>
+            <span class="small muted">SAP ${esc(m.prn)} · ${esc(m.codigo)} · ${esc(m.classe?.nome || '')}</span>
             ${m.centro ? `<span><span class="pill pill-cc pill-mini">CC ${esc(m.centro)}</span></span>` : ''}</span>
           </button>
         </td>
@@ -196,7 +196,7 @@ export async function montar(el, ctx) {
 
   function desenhar() {
     el.innerHTML = `
-      ${cabecalho('Materiais', 'Busque por nome, PRN, código, marca, descrição ou localização. Acentos e símbolos não atrapalham a busca.',
+      ${cabecalho('Materiais', 'Busque por nome, código SAP, código, marca, descrição ou localização. Acentos e símbolos não atrapalham a busca.',
         pode.editar ? `<button class="btn btn-light" type="button" data-acao="etiquetas">Imprimir etiquetas<span id="qtdSelecionados"></span></button>
                        <button class="btn btn-primary" type="button" data-acao="novo">Novo material</button>` : '')}
       <div class="resumo-chips" id="resumoMateriais">${resumo()}</div>
@@ -305,7 +305,7 @@ export async function montar(el, ctx) {
             ${m.removido_em ? '<span class="pill gray">Removido</span>' : ''}</div>
           ${m.descricao ? `<p class="detalhe-desc">${esc(m.descricao)}</p>` : ''}
           <dl class="ficha">
-            <div><dt>PRN</dt><dd>${esc(m.prn)}</dd></div>
+            <div><dt>Código SAP</dt><dd>${esc(m.prn)}</dd></div>
             <div><dt>Código</dt><dd>${esc(m.codigo)}</dd></div>
             <div><dt>Marca</dt><dd>${esc(m.marca || 'Não informada')}</dd></div>
             <div><dt>Centro de custo</dt><dd>${m.centro ? `${esc(m.centro)}${m.centroCodigo ? ` (${esc(m.centroCodigo)})` : ''}. Só esse setor pode pedir.` : 'Uso geral'}</dd></div>
@@ -351,7 +351,7 @@ export async function montar(el, ctx) {
     history.replaceState(null, '', `#/materiais/${encodeURIComponent(m.codigo)}`);
     const fundo = abrirModal({
       titulo: esc(m.nome),
-      subtitulo: `${esc(m.codigo)} · PRN ${esc(m.prn)}`,
+      subtitulo: `${esc(m.codigo)} · SAP ${esc(m.prn)}`,
       largo: true,
       corpo: '<div class="carregando">Carregando...</div>',
       rodape: rodapeDetalhe(m),
@@ -449,7 +449,7 @@ export async function montar(el, ctx) {
         <div class="form-section primeira"><h3>Identificação</h3>
           <div class="fields">
             <div class="field wide"><label for="mNome">Nome do material *</label><input id="mNome" maxlength="120" required value="${esc(inicial.nome || '')}" placeholder="Ex.: Parafuso sextavado 8 x 50 mm"></div>
-            <div class="field"><label for="mPrn">PRN *</label><input id="mPrn" maxlength="40" required value="${esc(inicial.prn || '')}" autocomplete="off"></div>
+            <div class="field"><label for="mPrn">Código SAP *</label><input id="mPrn" maxlength="40" required value="${esc(inicial.prn || '')}" autocomplete="off"></div>
             <div class="field"><label for="mClasse">Classe *</label><select id="mClasse"></select><small class="dica" id="mClassePrevia"></small></div>
             <div class="field"><label for="mMarca">Marca</label><input id="mMarca" maxlength="60" value="${esc(inicial.marca || '')}"></div>
             <div class="field"><label for="mCentro">Centro de custo</label><select id="mCentro"></select><small class="dica">Escolha um setor quando o estoque for só dele. Ex.: copos da Elétrica e copos da Mecânica são dois cadastros, cada um com o seu saldo.</small></div>
@@ -696,7 +696,7 @@ export async function montar(el, ctx) {
       };
       if (!dados.embalagem_qtd || !dados.embalagem_unidade) { dados.embalagem_qtd = null; dados.embalagem_unidade = null; }
       if (dados.nome.length < 2) return falhar('Informe o nome do material.');
-      if (!dados.prn) return falhar('Informe o PRN.');
+      if (!dados.prn) return falhar('Informe o código SAP.');
       if (!dados.classe_id) return falhar('Escolha a classe do material.');
       if (!dados.deposito_id) return falhar('Escolha o depósito.');
       if ([dados.estoque_minimo, dados.saldo_emergencial, dados.peso_kg ?? 0].some(n => Number.isNaN(n) || n < 0)) return falhar('Os números não podem ser negativos.');

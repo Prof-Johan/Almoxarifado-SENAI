@@ -13,14 +13,14 @@ export const temEmailReal = email => Boolean(email) && !String(email).endsWith(S
 function traduzirErroLogin(erro) {
   const msg = String(erro?.message || '');
   const codigo = erro?.code || '';
-  if (codigo === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'E-mail, matrícula ou senha incorretos.';
+  if (codigo === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'E-mail, PRN ou senha incorretos.';
   if (codigo === 'user_banned' || /banned/i.test(msg)) return 'Conta bloqueada. Procure o gestor do almoxarifado.';
   if (codigo === 'email_not_confirmed' || /not confirmed/i.test(msg)) return 'Acesso ainda não confirmado. Use o link do convite enviado por e-mail.';
   if (/fetch|network/i.test(msg)) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
   return msg || 'Não foi possível entrar.';
 }
 
-// Aceita e-mail ou matrícula.
+// Aceita e-mail ou PRN.
 export async function resolverEmail(login) {
   const texto = String(login || '').trim();
   if (texto.includes('@')) return texto.toLowerCase();
@@ -31,7 +31,7 @@ export async function resolverEmail(login) {
 
 export async function entrar(login, senha) {
   const email = await resolverEmail(login);
-  if (!email) throw new Error('E-mail, matrícula ou senha incorretos.');
+  if (!email) throw new Error('E-mail, PRN ou senha incorretos.');
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) throw new Error(traduzirErroLogin(error));
   await registrarSessao();

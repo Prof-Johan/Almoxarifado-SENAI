@@ -560,7 +560,7 @@ h1, h2, h3, .pagehead h1, .section-title, .top-title, .modal-title, .auth-headin
 /* Recolhido */
 .app { --largura-lateral: 260px; --altura-topo: 86px; }
 .app.lateral-fechada .sidebar { margin-left: calc(-1 * var(--largura-lateral)); }
-.app.topo-fechado .topbar { margin-top: calc(-1 * var(--altura-topo)); }
+.app.topo-fechado .topbar { margin-top: calc(-1 * var(--altura-topo)); top: calc(-1 * var(--altura-topo)); }
 
 /* Movimento de clique: ao abrir, recua um pouco e abre; ao fechar, abre um pouco mais e fecha. */
 @keyframes lateral-abrir {
@@ -574,14 +574,14 @@ h1, h2, h3, .pagehead h1, .section-title, .top-title, .modal-title, .auth-headin
   100% { margin-left: calc(-1 * var(--largura-lateral)); }
 }
 @keyframes topo-abrir {
-  0% { margin-top: calc(-1 * var(--altura-topo)); }
-  22% { margin-top: calc(-1 * var(--altura-topo) - 10px); }
-  100% { margin-top: 0; }
+  0% { margin-top: calc(-1 * var(--altura-topo)); top: calc(-1 * var(--altura-topo)); }
+  22% { margin-top: calc(-1 * var(--altura-topo) - 10px); top: calc(-1 * var(--altura-topo) - 10px); }
+  100% { margin-top: 0; top: 0; }
 }
 @keyframes topo-fechar {
-  0% { margin-top: 0; }
-  24% { margin-top: 10px; }
-  100% { margin-top: calc(-1 * var(--altura-topo)); }
+  0% { margin-top: 0; top: 0; }
+  24% { margin-top: 10px; top: 10px; }
+  100% { margin-top: calc(-1 * var(--altura-topo)); top: calc(-1 * var(--altura-topo)); }
 }
 .app.lateral-abrindo .sidebar { animation: lateral-abrir 0.46s cubic-bezier(0.34, 0.7, 0.2, 1) both; }
 .app.lateral-fechando .sidebar { animation: lateral-fechar 0.42s cubic-bezier(0.5, 0, 0.3, 1) both; }
@@ -615,3 +615,19 @@ h1, h2, h3, .pagehead h1, .section-title, .top-title, .modal-title, .auth-headin
 [data-tema="escuro"] .pill-cc { color: #f3cdbd; }
 
 input[type=checkbox], input[type=radio] { width: 18px; height: 18px; min-height: 0; padding: 0; flex-shrink: 0; accent-color: var(--senai-azul); }
+
+/* Título e descrição da página na barra do topo (sem repetir dentro da página) */
+.top-title-group { flex: 1; min-width: 0; }
+h1.top-title { margin: 0; font-size: 22px; line-height: 1.2; }
+.top-desc {
+  margin: 4px 0 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+[data-tema="escuro"] .top-desc { color: #b6c3d6; }
+.pagehead-so-acao { justify-content: flex-end; margin-bottom: 14px; }
+@media (max-width: 800px) {
+  .top-desc { display: none; }
+}

@@ -99,7 +99,7 @@ export async function montar(el, ctx) {
     const dep = deposito(inv);
     await baixarExcel(`Inventario ${inv.numero} - ${nomeDeposito(dep)}`, [{
       nome: 'Contagem',
-      colunas: [{ titulo: 'Endereço', largura: 22 }, { titulo: 'Código', largura: 13 }, { titulo: 'PRN', largura: 12 }, { titulo: 'Material', largura: 40 },
+      colunas: [{ titulo: 'Endereço', largura: 22 }, { titulo: 'Código', largura: 13 }, { titulo: 'Código SAP', largura: 14 }, { titulo: 'Material', largura: 40 },
         { titulo: 'Unidade', largura: 9 }, { titulo: 'Saldo no sistema', largura: 16 }, { titulo: 'Contado', largura: 10 }, { titulo: 'Diferença', largura: 11 },
         { titulo: 'Observação', largura: 30 }, { titulo: 'Contado por', largura: 22 }],
       linhas: itensDe(inv).map(i => {

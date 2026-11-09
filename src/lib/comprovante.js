@@ -58,7 +58,7 @@ export async function montarComprovante(janela, dados, formato = 'cupom') {
       <div><dt>Retirado em:</dt><dd>${esc(fmtDataHora(p.retirado_em || new Date()))}</dd></div>
       <div><dt>Setor:</dt><dd>${esc(dados.setor || '')}${dados.centroCusto ? ` · CC ${esc(dados.centroCusto)}` : ''}</dd></div>
       <div><dt>Solicitante:</dt><dd>${esc(p.solicitante_nome || '')}</dd></div>
-      <div><dt>Retirado por:</dt><dd>${esc(p.recebedor_nome || '')} (${p.retirada_metodo === 'FOTO' ? 'foto' : 'crachá'})</dd></div>
+      <div><dt>Retirado por:</dt><dd>${esc(p.recebedor_nome || '')} (${p.retirada_metodo === 'FOTO' ? 'foto' : 'PRN'})</dd></div>
       <div><dt>Entregue por:</dt><dd>${esc(p.entregue_por_nome || '')}</dd></div>
       <div><dt>Pedido em:</dt><dd>${esc(fmtDataHora(p.criado_em))}</dd></div>
     </dl>

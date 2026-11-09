@@ -92,7 +92,7 @@ export async function montar(el, ctx) {
         ordemLocal: [dep?.numero || 0, x.prateleira, x.lado, x.andar, x.posicao].map(v => String(v).padStart(3, '0')).join(''),
         reservado,
         disponivel: Math.max(Number(x.saldo) - reservado, 0),
-        rotulo: `${x.codigo} · ${x.nome} · PRN ${x.prn}`,
+        rotulo: `${x.codigo} · ${x.nome} · ${x.unidade_medida}`,
       };
     });
     porId.materiais = new Map(materiais.map(x => [x.id, x]));
@@ -168,15 +168,17 @@ export async function montar(el, ctx) {
 
   function linhas() {
     const lista = filtrados();
-    if (!lista.length) return `<tr><td colspan="7" class="empty">${pedidos.length ? 'Nenhum pedido com esse filtro.' : 'Nenhum pedido ainda.'}</td></tr>`;
+    if (!lista.length) return `<tr><td colspan="6" class="empty">${pedidos.length ? 'Nenhum pedido com esse filtro.' : 'Nenhum pedido ainda.'}</td></tr>`;
     return lista.map(p => {
       const itens = itensDe(p);
-      const peso = pesoDe(p);
+      const resumo = itens.slice(0, 2).map(i => {
+        const m = porId.materiais.get(i.material_id);
+        return `${fmtQtd(i.quantidade)} ${m?.unidade_medida || ''} · ${m?.nome || 'Material removido'}`;
+      });
       return `<tr>
         <td><button type="button" class="link-material" data-abrir="${p.id}"><span><b>${esc(p.numero)}</b><span class="small muted">${fmtDataHora(p.criado_em)}</span></span></button></td>
         <td>${esc(p.solicitante_nome || '')}<div class="small muted">${esc(setores.find(s => s.id === p.setor_id)?.nome || '')}</div></td>
-        <td>${itens.length} item(ns)<div class="small muted">${esc(itens.slice(0, 2).map(i => porId.materiais.get(i.material_id)?.nome || '').join(', '))}${itens.length > 2 ? '...' : ''}</div></td>
-        <td class="nowrap">${peso ? fmtQtd(peso) + ' kg' : '—'}</td>
+        <td>${itens.length} ${itens.length === 1 ? 'item' : 'itens'}<div class="small muted">${resumo.map(esc).join('<br>')}${itens.length > 2 ? `<br>e mais ${itens.length - 2}` : ''}</div></td>
         <td class="nowrap">${prazoTexto(p)}</td>
         <td><span class="pill ${STATUS_PEDIDO[p.status].classe}">${STATUS_PEDIDO[p.status].rotulo}</span>${p.usa_emergencial ? '<div><span class="pill red pill-mini">Emergencial</span></div>' : ''}</td>
         <td><button class="btn ${botaoAcao(p) === 'Abrir' ? 'btn-light' : 'btn-primary'} btn-sm" type="button" data-abrir="${p.id}">${botaoAcao(p)}</button></td>
@@ -202,7 +204,7 @@ export async function montar(el, ctx) {
       ${cabecalho(pode.operar || meuNivel === 1 ? 'Pedidos' : 'Meus pedidos',
         pode.operar
           ? 'Fluxo do SAI+: pedido no setor, separação, identificação na retirada e registro da saída. A lista de separação sai na ordem do endereço.'
-          : `Peça o material pelo sistema e retire no almoxarifado com o crachá. O prazo para retirar é de ${regras.prazo} dias.`,
+          : `Peça o material pelo sistema e retire no almoxarifado informando o seu PRN. O prazo para retirar é de ${regras.prazo} dias.`,
         pode.pedir ? '<button class="btn btn-primary" type="button" data-acao="novo">Novo pedido</button>' : '')}
       <div class="resumo-chips" id="chipsPed">${chips()}</div>
       <section class="card card-pad">
@@ -210,7 +212,7 @@ export async function montar(el, ctx) {
           <input class="search" id="fBuscaPed" type="search" placeholder="Buscar por número, solicitante, setor ou material" value="${esc(filtro.busca)}" aria-label="Buscar pedido" autocomplete="off">
         </div>
         <div class="table-wrap"><table class="table">
-          <thead><tr><th>Pedido</th><th>Solicitante</th><th>Itens</th><th>Peso</th><th>Prazo</th><th>Situação</th><th></th></tr></thead>
+          <thead><tr><th>Pedido</th><th>Solicitante</th><th>Itens</th><th>Prazo</th><th>Situação</th><th></th></tr></thead>
           <tbody id="corpoPed">${linhas()}</tbody>
         </table></div>
       </section>
@@ -227,7 +229,7 @@ export async function montar(el, ctx) {
   // -----------------------------------------------------------------
   const opcoesMateriais = (setorId = null) => ativos().filter(m => !setorId || !bloqueioSetor(m, setorId)).map(m => `<option value="${esc(m.rotulo)}"></option>`).join('');
   const linhaItem = () => `<div class="linha-pedido">
-      <input class="item-material" list="listaMateriaisPed" placeholder="Busque por nome, PRN ou código" aria-label="Material" autocomplete="off">
+      <input class="item-material" list="listaMateriaisPed" placeholder="Busque por nome, código SAP ou código" aria-label="Material" autocomplete="off">
       <input class="item-qtd" type="number" min="0" step="any" placeholder="Qtd." aria-label="Quantidade">
       <select class="item-cat" aria-label="Motivo da retirada">${Object.entries(CATEGORIAS).map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>
       <button class="btn btn-ghost btn-sm" type="button" data-tirar-linha aria-label="Tirar item">×</button>
@@ -242,7 +244,7 @@ export async function montar(el, ctx) {
     }
     const fundo = abrirModal({
       titulo: 'Novo pedido de material',
-      subtitulo: `O almoxarifado separa e você retira com o crachá em até ${regras.prazo} dias.`,
+      subtitulo: `O almoxarifado separa e você retira informando o seu PRN em até ${regras.prazo} dias.`,
       largo: true,
       corpo: `<form id="formPed" novalidate>
         <div class="fields campos-3">
@@ -279,7 +281,6 @@ export async function montar(el, ctx) {
         const normal = Math.max(m.disponivel - Number(m.saldo_emergencial), 0);
         const avisos = [`Disponível: ${fmtQtd(m.disponivel)} ${m.unidade_medida}`, `endereço ${m.local}`];
         if (m.centro_custo_id) avisos.push(`CC ${esc(setorDe(m.centro_custo_id)?.nome || '')}`);
-        if (m.peso_kg) avisos.push(`${fmtQtd(m.peso_kg)} kg cada`);
         if (qtd > m.disponivel) avisos.push('<b class="negativo">mais do que há disponível</b>');
         else if (qtd > normal) { avisos.push('<b class="negativo">usa o saldo emergencial</b>'); emergencial = true; }
         info.innerHTML = avisos.join(' · ');
@@ -287,7 +288,8 @@ export async function montar(el, ctx) {
         if (m.epi) epis.push(`${esc(m.nome)}: ${esc(m.epi)}`);
       });
       const partes = [];
-      if (peso) partes.push(`<div><b>Peso total:</b> ${fmtQtd(peso)} kg${peso >= 25 ? ' · use carrinho ou peça ajuda para carregar' : ''}</div>`);
+      // O peso só aparece quando pede cuidado para carregar.
+      if (peso >= 25) partes.push(`<div><b>Peso total:</b> ${fmtQtd(peso)} kg · use carrinho ou peça ajuda para carregar</div>`);
       if (epis.length) partes.push(`<div><b>EPI necessário:</b> ${epis.join('; ')}</div>`);
       if (emergencial) partes.push('<div class="negativo"><b>Este pedido usa o saldo emergencial e vai para aprovação do gestor.</b></div>');
       else if (regras.exigir) partes.push('<div>Todos os pedidos passam pela aprovação do gestor.</div>');
@@ -349,7 +351,7 @@ export async function montar(el, ctx) {
           atualizarLista();
           mostrarConcluido('Pedido enviado', `<p>Seu pedido <b>${esc(data.numero)}</b> foi registrado.</p>
             <p>${data.status === 'AGUARDANDO_APROVACAO' ? 'Ele vai para a <b>aprovação do gestor</b> antes da separação.' : 'O almoxarifado já pode separar o material.'}</p>
-            <p>Retire até <b>${fmtData(data.prazo_retirada)}</b>, com o seu crachá. Depois disso o pedido vence.</p>`);
+            <p>Retire até <b>${fmtData(data.prazo_retirada)}</b>, informando o seu PRN. Depois disso o pedido vence.</p>`);
         } catch (falha) {
           falhar(erroAmigavel(falha));
         }
@@ -380,7 +382,7 @@ export async function montar(el, ctx) {
         <div><dt>Prazo para retirar</dt><dd>${fmtData(p.prazo_retirada)} · ${prazoTexto(p)}</dd></div>
         ${p.aprovado_em ? `<div><dt>${p.status === 'RECUSADO' ? 'Recusado' : 'Aprovado'} por</dt><dd>${esc(p.aprovado_por_nome || '')} · ${fmtDataHora(p.aprovado_em)}</dd></div>` : ''}
         ${p.separado_em ? `<div><dt>Separado por</dt><dd>${esc(p.separado_por_nome || '')} · ${fmtDataHora(p.separado_em)}</dd></div>` : ''}
-        ${p.retirado_em ? `<div><dt>Retirado por</dt><dd>${esc(p.recebedor_nome || '')} (${p.retirada_metodo === 'CRACHA' ? 'crachá' : 'foto'}) · ${fmtDataHora(p.retirado_em)}<br><span class="small muted">Entregue por ${esc(p.entregue_por_nome || '')}</span></dd></div>` : ''}
+        ${p.retirado_em ? `<div><dt>Retirado por</dt><dd>${esc(p.recebedor_nome || '')} (${p.retirada_metodo === 'CRACHA' ? 'PRN' : 'foto'}) · ${fmtDataHora(p.retirado_em)}<br><span class="small muted">Entregue por ${esc(p.entregue_por_nome || '')}</span></dd></div>` : ''}
       </dl>
       ${p.observacao ? `<p class="small"><b>Observação:</b> ${esc(p.observacao)}</p>` : ''}
       <div class="acoes-linha">
@@ -399,7 +401,7 @@ export async function montar(el, ctx) {
           const maximo = Math.min(Number(i.quantidade), Number(m?.saldo || 0) - (Number(m?.reservado || 0) - Number(i.quantidade)));
           return `<tr data-item="${i.id}">
             <td><span class="codigo-local">${esc(m?.local || '')}</span></td>
-            <td><span class="link-material"><span class="barra-classe" style="background:${esc(m?.classe?.cor || '#ccc')}"></span><span><b>${esc(m?.nome || 'Material removido')}</b><span class="small muted">${esc(m?.codigo || '')}${m?.peso_kg ? ` · ${fmtQtd(m.peso_kg)} kg cada` : ''}</span></span></span></td>
+            <td><span class="link-material"><span class="barra-classe" style="background:${esc(m?.classe?.cor || '#ccc')}"></span><span><b>${esc(m?.nome || 'Material removido')}</b><span class="small muted">${esc(m?.codigo || '')}${m?.unidade_medida ? ` · ${esc(m.unidade_medida)}` : ''}</span></span></span></td>
             <td class="small">${CATEGORIAS[i.categoria]}</td>
             <td class="nowrap">${fmtQtd(i.quantidade)} ${esc(m?.unidade_medida || '')}</td>
             <td class="nowrap">${separando ? `<input class="sep-qtd" type="number" min="0" max="${i.quantidade}" step="any" value="${i.quantidade_separada ?? Math.max(Math.min(i.quantidade, maximo), 0)}" aria-label="Quantidade separada">` : i.quantidade_separada === null ? '—' : fmtQtd(i.quantidade_separada)}</td>
@@ -413,16 +415,15 @@ export async function montar(el, ctx) {
       ${p.status === 'SEPARADO' && pode.operar ? `
       <div class="painel-retirada">
         <h3>Confirmar a retirada</h3>
-        <p class="small muted">Assinar para receber: a retirada só conclui com o crachá cadastrado ou com foto de quem está levando.</p>
+        <p class="small muted">Assinar para receber: a retirada só conclui com o PRN de quem está levando ou com uma foto.</p>
         <div class="abas" role="tablist">
-          <button type="button" class="aba ativa" data-aba="cracha" role="tab" aria-selected="true">Crachá</button>
-          <button type="button" class="aba" data-aba="foto" role="tab" aria-selected="false">Foto (sem crachá)</button>
+          <button type="button" class="aba ativa" data-aba="cracha" role="tab" aria-selected="true">PRN</button>
+          <button type="button" class="aba" data-aba="foto" role="tab" aria-selected="false">Foto (sem PRN)</button>
         </div>
         <div data-painel="cracha">
-          <label class="small" for="retCracha">Aproxime o crachá do leitor ou digite o número</label>
-          <div class="linha-senha"><input id="retCracha" autocomplete="off" placeholder="Número do crachá" data-nao-altera>
-          ${'NDEFReader' in window ? '<button class="btn btn-light" type="button" data-ped="nfc">Ler pelo celular (NFC)</button>' : ''}</div>
-          <small class="dica">Leitores USB de crachá funcionam como teclado: o número aparece no campo e o Enter confirma.</small>
+          <label class="small" for="retCracha">PRN de quem está retirando</label>
+          <input id="retCracha" autocomplete="off" inputmode="numeric" maxlength="8" placeholder="8 dígitos" data-nao-altera>
+          <small class="dica">Digite o PRN e aperte Enter para confirmar. Leitores de crachá que digitam o PRN também funcionam.</small>
         </div>
         <div data-painel="foto" hidden>
           <div class="fields">
@@ -495,8 +496,8 @@ export async function montar(el, ctx) {
     async function entregar(metodo) {
       let args = { p_pedido: p.id, p_metodo: metodo };
       if (metodo === 'CRACHA') {
-        const numero = $('#retCracha', corpo).value.trim();
-        if (!numero) return falhar('Aproxime o crachá ou digite o número.');
+        const numero = $('#retCracha', corpo).value.replace(/\D/g, '');
+        if (numero.length !== 8) return falhar('Digite o PRN de quem está retirando, com 8 dígitos.');
         args.p_cracha = numero;
       } else {
         const nome = $('#retNome', corpo).value.trim();
@@ -560,16 +561,6 @@ export async function montar(el, ctx) {
       }
       if (acao === 'refazer') { refazendo = true; return redesenhar(); }
       if (acao === 'comprovante') return imprimirComprovante(p.id, $('#detFormato', fundo).value).catch(f => falhar(f.message));
-      if (acao === 'nfc') {
-        try {
-          const leitor = new window.NDEFReader();
-          const controle = new AbortController();
-          await leitor.scan({ signal: controle.signal });
-          toast('Aproxime o crachá do celular.');
-          leitor.onreading = ev => { controle.abort(); $('#retCracha', corpo).value = ev.serialNumber || ''; $('[data-ped="entregar"]', fundo)?.click(); };
-        } catch (falha) { falhar('Não foi possível ler o NFC. Confira se o NFC do celular está ligado e permita o acesso.'); }
-        return;
-      }
       await executando(botao, async () => {
         try {
           if (acao === 'aprovar') {

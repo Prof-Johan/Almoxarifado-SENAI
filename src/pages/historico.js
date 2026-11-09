@@ -31,7 +31,7 @@ const ACOES = {
 const CAMPOS = {
   nome: 'Nome',
   email: 'E-mail',
-  matricula: 'Matrícula',
+  matricula: 'PRN do usuário',
   cracha: 'Crachá',
   perfil: 'Perfil',
   unidade_id: 'Unidade',
@@ -45,7 +45,7 @@ const CAMPOS = {
   valor: 'Valor',
   numero: 'Número',
   removido_em: 'Remoção',
-  prn: 'PRN',
+  prn: 'Código SAP',
   marca: 'Marca',
   classe_id: 'Classe',
   unidade_medida: 'Unidade de controle',
@@ -157,7 +157,7 @@ export async function montar(el, ctx) {
     if (campo === 'evidencias') return `${(valor || []).length} foto(s)`;
     if (campo === 'nf_arquivo_path') return 'arquivo enviado';
     if (['retirado_em', 'aprovado_em', 'prazo_retirada'].includes(campo)) return esc(fmtDataHora(valor));
-    if (campo === 'retirada_metodo') return valor === 'CRACHA' ? 'Crachá' : 'Foto';
+    if (campo === 'retirada_metodo') return valor === 'CRACHA' ? 'PRN' : 'Foto';
     if (campo === 'usa_emergencial') return valor ? 'Sim' : 'Não';
     if (campo === 'nf_data') return esc(fmtData(valor + 'T12:00:00'));
     if (campo === 'centro_custo_id') return esc(nomes.setores.get(String(valor)) || `nº ${valor}`);
@@ -184,7 +184,7 @@ export async function montar(el, ctx) {
       if (r.tabela === 'classes') partes.push(`Cor ${valorLegivel('cor', d.cor)}`);
       if (r.tabela === 'pedidos') partes.push(`Solicitante ${esc(d.solicitante_nome || '')}`);
       if (r.tabela === 'recebimentos') partes.push(`NF ${esc(d.nf_numero || '')} · ${esc(d.fornecedor || '')}`);
-      if (r.tabela === 'materiais') partes.push(`${esc(d.codigo || '')} · PRN ${esc(d.prn || '')}`);
+      if (r.tabela === 'materiais') partes.push(`${esc(d.codigo || '')} · SAP ${esc(d.prn || '')}`);
       if (r.tabela === 'depositos') partes.push(`${d.prateleiras} prateleiras · ${d.andares} andares · ${d.posicoes} posições`);
       return partes.length ? partes.join(' · ') : '<span class="muted">Cadastro criado</span>';
     }

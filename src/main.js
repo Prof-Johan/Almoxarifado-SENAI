@@ -78,7 +78,8 @@ function montarLayout() {
         <header class="topbar">
           <button class="alca alca-topo" type="button" id="alcaTopo" aria-label="Recolher a barra do topo" title="Recolher a barra do topo">˄</button>
           <div class="top-title-group">
-            <div class="top-title" id="topTitle"></div>
+            <h1 class="top-title" id="topTitle"></h1>
+            <p class="top-desc" id="topDesc" hidden></p>
             <select class="mobile-nav" id="mobileNav" aria-label="Ir para a página"></select>
           </div>
           <div class="account-toolbar">
@@ -153,6 +154,9 @@ function alternarBarra(nome) {
 
 function ligarBarrasRecolhiveis() {
   const app = $('.app');
+  // A altura do topo muda com a descrição de cada página; a barra recolhida acompanha.
+  const topo = $('.topbar');
+  new ResizeObserver(() => app.style.setProperty('--altura-topo', `${topo.offsetHeight}px`)).observe(topo);
   for (const nome of Object.keys(BARRAS)) {
     const fechada = localStorage.getItem(`almox-barra-${nome}`) === 'fechada';
     if (fechada) {
@@ -203,6 +207,7 @@ async function desenharPagina() {
     .map(([id, r]) => `<option value="${id}" data-rotulo="${r.rotulo}" ${id === atual ? 'selected' : ''}>${r.rotulo}</option>`)
     .join('');
   $('#topTitle').textContent = rota.titulo;
+  $('#topDesc').hidden = true;
   document.title = `${rota.rotulo} · Almoxarifado Inteligente`;
   trocarRota(atual, permitidas.map(([id]) => id));
   aplicarSelos();

@@ -116,7 +116,7 @@ export function erroAmigavel(erro) {
   if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) return 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
   if (codigo === '23505' || /duplicate key/i.test(msg)) {
     if (/classes_nome/.test(msg)) return 'Já existe uma classe com esse nome.';
-    if (/materiais_prn/.test(msg)) return 'Já existe um material com este PRN neste centro de custo.';
+    if (/materiais_prn/.test(msg)) return 'Já existe um material com este código SAP neste centro de custo.';
     if (/materiais_posicao/.test(msg)) return 'Essa posição já está ocupada por outro material. Escolha outra ou use "Sugerir posição livre".';
     if (/depositos_numero/.test(msg)) return 'Já existe um depósito com esse número nesta unidade.';
     if (/unidades_nome/.test(msg)) return 'Já existe uma unidade com esse nome.';
@@ -144,6 +144,15 @@ export function gerarSenha(tamanho = 10) {
   return chars.join('');
 }
 
+// O título e a descrição da página ficam na barra do topo, sem repetir
+// dentro da página. Na página fica só o botão de ação, quando houver.
 export function cabecalho(titulo, descricao = '', acao = '') {
-  return `<div class="pagehead"><div><h1>${titulo}</h1>${descricao ? `<p class="lead">${descricao}</p>` : ''}</div>${acao ? `<div class="pagehead-acao">${acao}</div>` : ''}</div>`;
+  const alvoTitulo = document.getElementById('topTitle');
+  const alvoDescricao = document.getElementById('topDesc');
+  if (alvoTitulo) alvoTitulo.innerHTML = titulo;
+  if (alvoDescricao) { alvoDescricao.innerHTML = descricao; alvoDescricao.hidden = !descricao; }
+  if (!alvoTitulo) {
+    return `<div class="pagehead"><div><h1>${titulo}</h1>${descricao ? `<p class="lead">${descricao}</p>` : ''}</div>${acao ? `<div class="pagehead-acao">${acao}</div>` : ''}</div>`;
+  }
+  return acao ? `<div class="pagehead pagehead-so-acao"><div class="pagehead-acao">${acao}</div></div>` : '';
 }

@@ -13,7 +13,7 @@ export function abrirMinhaConta() {
     corpo: `
       <div class="kv conta-dados">
         <div class="box"><span>Perfil</span><b>${esc(PERFIS[p.perfil]?.rotulo || p.perfil)}</b></div>
-        <div class="box"><span>Acesso</span><b>${temEmailReal(emailAcesso) ? esc(emailAcesso) : `Matrícula ${esc(p.matricula || '')}`}</b></div>
+        <div class="box"><span>Acesso</span><b>${temEmailReal(emailAcesso) ? esc(emailAcesso) : `PRN ${esc(p.matricula || '')}`}</b></div>
         <div class="box"><span>Unidade</span><b>${esc(p.unidade?.nome || 'Não informada')}</b></div>
         <div class="box"><span>Setor</span><b>${esc(p.setor?.nome || 'Não informado')}</b></div>
       </div>

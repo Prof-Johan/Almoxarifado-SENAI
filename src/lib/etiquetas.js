@@ -43,7 +43,7 @@ function etiquetaHtml(m, qr, formato, impressoPor) {
   const rodape = `${d.centro ? `CC ${esc(d.centro)} · ` : ''}Impressa em ${fmtData(new Date())}${impressoPor ? ' por ' + esc(impressoPor) : ''}`;
   const dados = `
     <div class="campos">
-      <div><span>PRN</span><b>${esc(d.prn)}</b></div>
+      <div><span>Cód. SAP</span><b>${esc(d.prn)}</b></div>
       <div><span>Código</span><b>${esc(d.codigo)}</b></div>
       <div><span>Unidade</span><b>${esc(d.unidade)}</b></div>
     </div>`;

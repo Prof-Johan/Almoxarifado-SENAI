@@ -62,7 +62,7 @@ export async function montar(el, ctx) {
           return [m.codigo, m.prn, m.nome, m.classe, m.unidade_medida, Number(m.saldo), Number(m.estoque_minimo), Number(m.saldo_emergencial),
             s.rotulo, CRITICIDADES[m.criticidade]?.rotulo, m.local, nomeDeposito(m.deposito), NIVEIS[rot?.nivel || 'BAIXA'].rotulo, rot?.retiradas || 0];
         });
-        return [{ nome: 'Estoque', colunas: ['Código', 'PRN', 'Material', 'Classe', 'Unidade', 'Saldo', 'Mínimo', 'Emergencial', 'Situação', 'Criticidade', 'Endereço', 'Depósito', 'Rotatividade (90 dias)', 'Retiradas (90 dias)']
+        return [{ nome: 'Estoque', colunas: ['Código', 'Código SAP', 'Material', 'Classe', 'Unidade', 'Saldo', 'Mínimo', 'Emergencial', 'Situação', 'Criticidade', 'Endereço', 'Depósito', 'Rotatividade (90 dias)', 'Retiradas (90 dias)']
           .map((t, i) => ({ titulo: t, largura: [13, 12, 40, 16, 9, 9, 9, 12, 18, 12, 22, 20, 20, 18][i] })), linhas }];
       },
       arquivo: () => `Estoque atual - ${fmtData(new Date()).replace(/\//g, '-')}`,

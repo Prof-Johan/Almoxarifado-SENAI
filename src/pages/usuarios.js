@@ -84,7 +84,7 @@ export async function montar(el, ctx) {
         </td>
         <td>
           ${u.email ? `<div>${esc(u.email)}</div>` : '<div class="muted">Sem e-mail</div>'}
-          ${u.matricula ? `<div class="small muted">Matrícula ${esc(u.matricula)}</div>` : ''}
+          ${u.matricula ? `<div class="small muted">PRN ${esc(u.matricula)}${/^[0-9]{8}$/.test(u.matricula) ? '' : ' <span class="aviso-texto">(fora do padrão de 8 dígitos)</span>'}</div>` : (u.removido_em ? '' : '<div class="small aviso-texto">Sem PRN</div>')}
         </td>
         <td><span class="role-pill perfil-${u.perfil.toLowerCase()}">${esc(rotuloPerfil(u.perfil))}</span></td>
         <td>${esc(u.unidade?.nome || '')}${u.setor ? `<div class="small muted">${esc(u.setor.nome)}</div>` : ''}</td>
@@ -102,7 +102,7 @@ export async function montar(el, ctx) {
         '<button class="btn btn-primary" type="button" data-acao="novo">Novo usuário</button>')}
       <section class="card card-pad">
         <div class="toolbar filtros">
-          <input class="search" id="filtroBusca" type="search" placeholder="Buscar por nome, e-mail, matrícula ou setor" value="${esc(filtro.busca)}" aria-label="Buscar usuário">
+          <input class="search" id="filtroBusca" type="search" placeholder="Buscar por nome, e-mail, PRN ou setor" value="${esc(filtro.busca)}" aria-label="Buscar usuário">
           <select id="filtroPerfil" aria-label="Filtrar por perfil">
             <option value="">Todos os perfis</option>
             ${Object.keys(PERFIS).map(p => `<option value="${p}" ${filtro.perfil === p ? 'selected' : ''}>${rotuloPerfil(p)}</option>`).join('')}
@@ -145,12 +145,11 @@ export async function montar(el, ctx) {
         <div class="fields">
           <div class="field wide"><label for="uNome">Nome completo *</label><input id="uNome" maxlength="100" required value="${esc(u?.nome || '')}" autocomplete="off"></div>
           <div class="field"><label for="uEmail">E-mail</label><input id="uEmail" type="email" maxlength="120" value="${esc(u?.email || '')}" autocomplete="off"><small class="dica">Usado para entrar e para recuperar a senha.</small></div>
-          <div class="field"><label for="uMatricula">Matrícula</label><input id="uMatricula" maxlength="30" value="${esc(u?.matricula || '')}" autocomplete="off"><small class="dica">Permite entrar sem e-mail.</small></div>
+          <div class="field"><label for="uMatricula">PRN *</label><input id="uMatricula" inputmode="numeric" maxlength="8" placeholder="8 dígitos" value="${esc(u?.matricula || '')}" autocomplete="off"><small class="dica">Código da pessoa na empresa. Serve para entrar no sistema e para confirmar a retirada de material.</small></div>
           <div class="field"><label for="uPerfil">Perfil *</label>
             <select id="uPerfil" ${proprio ? 'disabled' : ''}>${perfis.map(p => `<option value="${p}" ${p === perfilAtual ? 'selected' : ''}>${rotuloPerfil(p)}</option>`).join('')}</select>
             <small class="dica" id="uPerfilDescricao">${esc(PERFIS[perfilAtual]?.descricao || '')}</small>
           </div>
-          <div class="field"><label for="uCracha">Número do crachá (NFC)</label><input id="uCracha" maxlength="60" value="${esc(u?.cracha || '')}" autocomplete="off"><small class="dica">Vai confirmar as retiradas de material.</small></div>
           <div class="field"><label for="uUnidade">Unidade</label><select id="uUnidade">${opcoes(unidades, u?.unidade_id, 'Sem unidade')}</select></div>
           <div class="field"><label for="uSetor">Setor</label><select id="uSetor">${opcoes(setores, u?.setor_id, 'Sem setor')}</select></div>
           <div class="field wide"><label for="uEmpresa">Empresa (só para terceiros)</label><input id="uEmpresa" maxlength="100" value="${esc(u?.empresa || '')}" autocomplete="off" placeholder="Deixe em branco para funcionários da Klabin"></div>
@@ -178,7 +177,6 @@ export async function montar(el, ctx) {
       nome: valor('uNome'),
       email: valor('uEmail').toLowerCase(),
       matricula: valor('uMatricula'),
-      cracha: valor('uCracha'),
       unidade_id: valor('uUnidade'),
       setor_id: valor('uSetor'),
       empresa: valor('uEmpresa'),
@@ -187,11 +185,13 @@ export async function montar(el, ctx) {
     return dados;
   }
 
-  function validar(dados, modo, senha) {
+  function validar(dados, modo, senha, u) {
     if (dados.nome.length < 2) return 'Informe o nome completo.';
-    if (!dados.email && !dados.matricula) return 'Informe o e-mail ou a matrícula. Sem um dos dois a pessoa não consegue entrar.';
+    if (!u && !dados.matricula) return 'Informe o PRN.';
+    if (!dados.email && !dados.matricula) return 'Informe o e-mail ou o PRN. Sem um dos dois a pessoa não consegue entrar.';
     if (dados.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email)) return 'O e-mail não parece válido.';
-    if (dados.matricula && !/^[A-Za-z0-9._-]+$/.test(dados.matricula)) return 'A matrícula aceita só letras, números, ponto, hífen e sublinhado.';
+    // PRN antigo fora do padrão continua valendo até ser trocado.
+    if (dados.matricula && dados.matricula !== (u?.matricula || '') && !/^[0-9]{8}$/.test(dados.matricula)) return 'O PRN precisa ter exatamente 8 dígitos, só números.';
     if (modo === 'convite' && !dados.email) return 'Para enviar convite, informe o e-mail.';
     if (modo === 'senha' && senha.length < 8) return 'A senha provisória precisa ter pelo menos 8 caracteres.';
     return '';
@@ -221,7 +221,7 @@ export async function montar(el, ctx) {
       const dados = lerFormulario(u);
       const modo = u ? null : fundo.querySelector('input[name=uModo]:checked').value;
       const senha = u ? '' : $('#uSenha', fundo).value;
-      const problema = validar(dados, modo, senha);
+      const problema = validar(dados, modo, senha, u);
       if (problema) return mostrarErro(problema);
       mostrarErro('');
       await executando(e.submitter, async () => {
@@ -233,7 +233,7 @@ export async function montar(el, ctx) {
           } else {
             await gerenciarUsuario({ acao: 'criar', dados, modo, senha, redirectTo: window.location.origin });
             fecharModal(true);
-            const acesso = dados.email || `a matrícula ${dados.matricula}`;
+            const acesso = dados.email ? `${dados.email} ou o PRN ${dados.matricula}` : `o PRN ${dados.matricula}`;
             mostrarConcluido('Usuário criado', modo === 'senha'
               ? `<p><b>${esc(dados.nome)}</b> já pode entrar com ${esc(acesso)} e a senha provisória abaixo.</p>
                  <div class="senha-entrega"><span>Senha provisória</span><b>${esc(senha)}</b></div>
@@ -273,7 +273,7 @@ export async function montar(el, ctx) {
         try {
           await gerenciarUsuario({ acao: 'senha', id: u.id, senha });
           fecharModal(true);
-          const acesso = temEmailReal(u.email) ? u.email : `a matrícula ${u.matricula}`;
+          const acesso = temEmailReal(u.email) ? u.email : `o PRN ${u.matricula}`;
           mostrarConcluido('Senha provisória definida', `
             <p><b>${esc(u.nome)}</b> entra com ${esc(acesso)} e a senha abaixo.</p>
             <div class="senha-entrega"><span>Senha provisória</span><b>${esc(senha)}</b></div>

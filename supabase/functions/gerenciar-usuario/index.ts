@@ -28,7 +28,7 @@ function resposta(status: number, corpo: unknown) {
 function mensagemErro(erro: unknown): string {
   const msg = String((erro as { message?: string })?.message ?? erro ?? '');
   if (/perfis_email_key|already been registered|email_exists|already registered/i.test(msg)) return 'Já existe um usuário com este e-mail.';
-  if (/perfis_matricula_key/.test(msg)) return 'Já existe um usuário com esta matrícula.';
+  if (/perfis_matricula_key/.test(msg)) return 'Já existe um usuário com este PRN.';
   if (/perfis_cracha_key/.test(msg)) return 'Este número de crachá já está em uso.';
   if (/password/i.test(msg) && /(characters|weak|short|least)/i.test(msg)) return 'Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.';
   if (/invalid.*email|email.*invalid|unable to validate email/i.test(msg)) return 'E-mail inválido.';
@@ -54,6 +54,14 @@ function limpar(entrada: Record<string, unknown> = {}): Dados {
 const emailInterno = (matricula: string) =>
   `${matricula.toLowerCase().replace(/[^a-z0-9._-]/g, '')}${SEM_EMAIL}`;
 
+// E-mail de acesso guardado na conta enquanto o usuário está removido.
+// Assim o e-mail e o PRN dele ficam livres para um cadastro novo.
+const emailRemovido = (id: string) => `removido.${id}${SEM_EMAIL}`;
+
+// PRN: código da pessoa na empresa, com exatamente 8 dígitos.
+const PRN_VALIDO = /^[0-9]{8}$/;
+const ERRO_PRN = 'O PRN precisa ter exatamente 8 dígitos, só números.';
+
 async function rpc(admin: SupabaseClient, nome: string, args: Record<string, unknown>) {
   const { data, error } = await admin.rpc(nome, args);
   if (error) throw new Error(error.message);
@@ -74,17 +82,32 @@ async function validar(admin: SupabaseClient, ator: string, alvo: string | null,
 async function conferirRepetidos(admin: SupabaseClient, d: Dados, idAtual: string | null) {
   const campos: [string, string][] = [
     ['email', 'Já existe um usuário com este e-mail.'],
-    ['matricula', 'Já existe um usuário com esta matrícula.'],
+    ['matricula', 'Já existe um usuário com este PRN.'],
     ['cracha', 'Este número de crachá já está em uso.'],
   ];
   for (const [campo, mensagem] of campos) {
     const valor = d[campo];
     if (!valor) continue;
-    let consulta = admin.from('perfis').select('id').eq(campo, valor).limit(1);
+    let consulta = admin.from('perfis').select('id').eq(campo, valor).is('removido_em', null).limit(1);
     if (idAtual) consulta = consulta.neq('id', idAtual);
     const { data, error } = await consulta;
     if (error) throw new Error(error.message);
     if (data?.length) throw new Error(mensagem);
+  }
+}
+
+// Se o e-mail de acesso ainda estiver preso à conta de um usuário removido
+// (removido antes desta versão), solta essa conta para o e-mail ficar livre.
+async function liberarDeRemovidos(admin: SupabaseClient, d: Dados) {
+  const filtros: string[] = [];
+  if (d.email) filtros.push(`email.eq.${d.email}`);
+  if (d.matricula) filtros.push(`matricula.eq.${d.matricula}`);
+  if (!filtros.length) return;
+  const { data, error } = await admin.from('perfis').select('id').not('removido_em', 'is', null).or(filtros.join(','));
+  if (error) throw new Error(error.message);
+  for (const r of data ?? []) {
+    const { error: e } = await admin.auth.admin.updateUserById(r.id, { email: emailRemovido(r.id), email_confirm: true });
+    if (e) throw e;
   }
 }
 
@@ -108,13 +131,14 @@ async function criar(admin: SupabaseClient, ator: string, corpo: Record<string, 
   const modo = corpo.modo === 'convite' ? 'convite' : 'senha';
   const senha = String(corpo.senha ?? '');
   if (!d.nome || String(d.nome).length < 2) throw new Error('Informe o nome completo.');
-  if (!d.email && !d.matricula) throw new Error('Informe o e-mail ou a matrícula.');
-  if (d.matricula && !/^[A-Za-z0-9._-]+$/.test(String(d.matricula))) throw new Error('A matrícula aceita só letras, números, ponto, hífen e sublinhado.');
+  if (!d.matricula) throw new Error('Informe o PRN.');
+  if (!PRN_VALIDO.test(String(d.matricula))) throw new Error(ERRO_PRN);
   if (modo === 'convite' && !d.email) throw new Error('Para enviar convite, informe o e-mail.');
   if (modo === 'senha' && senha.length < 8) throw new Error('A senha provisória precisa ter pelo menos 8 caracteres.');
 
   await validar(admin, ator, null, d);
   await conferirRepetidos(admin, d, null);
+  await liberarDeRemovidos(admin, d);
 
   const emailAcesso = (d.email as string) || emailInterno(String(d.matricula));
   const criado = modo === 'convite'
@@ -137,21 +161,23 @@ async function editar(admin: SupabaseClient, ator: string, corpo: Record<string,
   const id = String(corpo.id || '');
   const d = limpar(corpo.dados as Record<string, unknown>);
   if ('nome' in d && (!d.nome || String(d.nome).length < 2)) throw new Error('Informe o nome completo.');
-  if (d.matricula && !/^[A-Za-z0-9._-]+$/.test(String(d.matricula))) throw new Error('A matrícula aceita só letras, números, ponto, hífen e sublinhado.');
-
   await validar(admin, ator, id, d);
   await conferirRepetidos(admin, d, id);
   const atual = await perfilAtual(admin, id);
+  if (atual.removido_em) throw new Error('Restaure o usuário antes de editar.');
+  // PRN antigo fora do padrão continua valendo até ser trocado.
+  if ('matricula' in d && d.matricula !== atual.matricula && d.matricula && !PRN_VALIDO.test(String(d.matricula))) throw new Error(ERRO_PRN);
 
   const mudancas: Record<string, unknown> = {};
   if ('email' in d || 'matricula' in d) {
     const email = 'email' in d ? d.email : atual.email;
     const matricula = 'matricula' in d ? d.matricula : atual.matricula;
-    if (!email && !matricula) throw new Error('Informe o e-mail ou a matrícula. Sem um dos dois a pessoa não consegue entrar.');
+    if (!email && !matricula) throw new Error('Informe o e-mail ou o PRN. Sem um dos dois a pessoa não consegue entrar.');
     const { data: conta, error } = await admin.auth.admin.getUserById(id);
     if (error) throw error;
     const acesso = (email as string) || emailInterno(String(matricula));
     if (acesso !== conta.user.email) {
+      await liberarDeRemovidos(admin, { email: (email as string) || null, matricula: (matricula as string) || null });
       mudancas.email = acesso;
       mudancas.email_confirm = true;
     }
@@ -183,9 +209,15 @@ async function alterarRemocao(admin: SupabaseClient, ator: string, corpo: Record
   const id = String(corpo.id || '');
   await validar(admin, ator, id, {}, remover);
   const atual = await perfilAtual(admin, id);
+  if (!remover) {
+    // Na volta, o e-mail e o PRN não podem estar com outro usuário.
+    await conferirRepetidos(admin, { email: atual.email, matricula: atual.matricula }, id);
+  }
   // Removido não entra. Ao restaurar, volta a situação anterior (ativo ou bloqueado).
+  // Enquanto removido, a conta fica com um e-mail interno, liberando o e-mail real.
   const banir = remover || !atual.ativo;
-  const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: banir ? BLOQUEIO : 'none' });
+  const acesso = remover ? emailRemovido(id) : (atual.email || emailInterno(String(atual.matricula || id)));
+  const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: banir ? BLOQUEIO : 'none', email: acesso, email_confirm: true });
   if (error) throw error;
   const usuario = await salvar(admin, ator, id, { removido: remover });
   return { ok: true, usuario };

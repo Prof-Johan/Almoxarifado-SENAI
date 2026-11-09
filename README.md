@@ -5,14 +5,15 @@ Sistema de almoxarifado desenvolvido com os aprendizes da Klabin e o SENAI, com 
 - **Entrega 1:** login, hierarquia de usuários, classes de cor, unidades, setores e histórico de alterações.
 - **Entrega 2:** depósitos e endereços, materiais, saldo com movimentações, etiquetas com QR, fotos, atualização em tempo real e identidade visual do SENAI.
 - **Entrega 3:** recebimento com nota fiscal (validação simulada), conferência com checklist do POP, divergência com fotos, aprovação com entrada no estoque, liberação para guarda e modo noturno.
+- **Entrega 4 (versão completa):** pedidos pelo setor, aprovação, separação por endereço, retirada com PRN ou foto, devolução, prazo de retirada, inventário periódico, relatórios em Excel, relatório semanal automático, rotatividade, modo offline e atalhos de teclado.
 - **Entrega 5 (ajustes dos testadores):** comprovante de retirada em cupom de 80 mm ou A4, contadores de novidades no menu, estoque por setor e centro de custo, fontes Archivo e Source Code Pro, tons pastéis do SENAI e barras de vidro recolhíveis.
-- **Entrega 4 (versão completa):** pedidos pelo setor, aprovação, separação por endereço, retirada com crachá ou foto, devolução, prazo de retirada, inventário periódico, relatórios em Excel, relatório semanal automático, rotatividade, modo offline e atalhos de teclado.
+- **Entrega 6 (ajustes dos testadores):** PRN do usuário com 8 dígitos no lugar da matrícula, retirada confirmada só pelo PRN, o antigo PRN do material passa a se chamar código SAP, e-mail e PRN de usuário removido podem ser reaproveitados, lista de pedidos com a unidade de medida no lugar do peso e título da página só na barra do topo.
 
 O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo/` para consulta.
 
 ## O que já funciona
 
-- Tela de login por e-mail ou matrícula, sem cadastro público.
+- Tela de login por e-mail ou PRN (o código de 8 dígitos da pessoa na empresa), sem cadastro público.
 - Recuperação de senha por e-mail e troca obrigatória da senha provisória no primeiro acesso.
 - Conta master, que nomeia gestores. Gestores criam usuários com perfis abaixo do seu.
 - Bloquear, desbloquear, remover e restaurar usuários. Nada é apagado de verdade.
@@ -21,7 +22,7 @@ O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo
 - Unidades e setores.
 - Histórico de quem criou, editou, removeu ou restaurou cada cadastro. Ninguém consegue alterar esse histórico.
 - Depósitos com prateleiras, lados, andares e posições, classes aceitas em cada um e mapa de ocupação.
-- Materiais com PRN, classe, unidade de controle, equivalência da embalagem, estoque mínimo, criticidade, saldo emergencial, peso, EPI, foto e ficha de segurança.
+- Materiais com código SAP, classe, unidade de controle, equivalência da embalagem, estoque mínimo, criticidade, saldo emergencial, peso, EPI, foto e ficha de segurança.
 - Código de localização no formato D01-P03-LA-A3-Po2, com uma posição por material e sugestão de posição livre seguindo o POP: pesados embaixo, críticos em altura de fácil acesso.
 - Saldo protegido: só muda por movimentação. O ajuste (gestor e master) exige motivo e fica registrado.
 - Busca sem acento e sem símbolos ("8x50" encontra "8 x 50"), filtros por classe, depósito e situação do estoque.
@@ -32,7 +33,7 @@ O protótipo anterior, que guardava tudo no navegador, está na pasta `prototipo
 - Divergência com descrição e fotos. Com divergência, só gestor ou master aprovam, e entra no estoque a quantidade conferida.
 - Pedidos no fluxo SAI+: o solicitante pede pelo computador ou celular, informando setor e motivo de cada item (uso comum, reposição de perdido ou de item sem condições). O sistema mostra o disponível (saldo menos o que já está reservado em pedidos), o peso total e o EPI necessário.
 - Saldo emergencial: um pedido que avança sobre ele vai para a aprovação do gestor. O gestor também pode ligar a regra "todo pedido precisa de aprovação" e mudar o prazo de retirada (7 dias por padrão).
-- Separação com a lista na ordem do endereço e retirada só com crachá cadastrado ou foto de quem leva. Leitores USB de crachá funcionam como teclado; no Android, dá para ler pelo NFC do celular. Pedido não retirado no prazo vence e libera o saldo reservado.
+- Separação com a lista na ordem do endereço e retirada só com o PRN ou foto de quem leva. Pedido não retirado no prazo vence e libera o saldo reservado.
 - Devolução pelo pedido ou avulsa, sempre registrada como movimentação.
 - Inventário por depósito, com contagem às cegas, divergências, exportação e ajuste autorizado pelo gestor.
 - Relatórios em Excel: estoque atual, movimentações, pedidos, recebimentos e divergências, rotatividade e relatório semanal.
@@ -59,12 +60,12 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 4 no ar?** Só rode o `supabase/migrations/0005_centro_custo.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
+> **Já tem a entrega 5 no ar?** Rode o `supabase/migrations/0006_prn_usuarios.sql` no SQL Editor, publique de novo a função `gerenciar-usuario` (o `index.ts` mudou) e envie os arquivos novos para o GitHub. No fim, o script mostra os usuários sem PRN ou com PRN fora do padrão de 8 dígitos: corrija cada um em **Usuários**. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
 
 ### 1. Supabase: criar o projeto e o banco
 
 1. Em supabase.com, crie um projeto novo só para este sistema. Para a região, escolha São Paulo.
-2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql`, `0004_pedidos_relatorios.sql` e `0005_centro_custo.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
+2. Abra **SQL Editor**, clique em **New query**, cole todo o conteúdo de `supabase/migrations/0001_base.sql` e clique em **Run**. Depois faça o mesmo com `0002_materiais.sql`, `0003_recebimento.sql`, `0004_pedidos_relatorios.sql`, `0005_centro_custo.sql` e `0006_prn_usuarios.sql`, nesta ordem. Todos têm que terminar sem erro e podem ser rodados de novo sem duplicar nada. Eles também criam os espaços de arquivos `materiais` (fotos e fichas, público) e `recebimentos` (notas e fotos de divergência, privado) e ligam a atualização em tempo real.
 3. Em **Authentication**, nas configurações de login, desligue **Allow new users to sign up**. Assim ninguém cria conta sozinho.
 4. Em **Authentication > URL Configuration**:
    - **Site URL**: o endereço de produção da Vercel (você volta aqui depois da etapa 5).
@@ -153,8 +154,8 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 1. Entre com a conta master.
 2. Em **Usuários**, crie o Jean como Gestor, com senha provisória. Anote a senha mostrada.
 3. Saia e entre como Jean. O sistema pede uma senha nova antes de liberar.
-4. Como Jean, confira que a lista de perfis não oferece Master nem Gestor. Crie um almoxarife e um aprendiz só com matrícula.
-5. Entre como o aprendiz pela matrícula. Ele vê o painel, os materiais e as classes, sem botões de alteração.
+4. Como Jean, confira que a lista de perfis não oferece Master nem Gestor. Crie um almoxarife e um aprendiz só com PRN, sem e-mail.
+5. Entre como o aprendiz pelo PRN. Ele vê o painel, os materiais e as classes, sem botões de alteração.
 6. Abra a mesma conta em dois navegadores. O primeiro sai sozinho na hora.
 7. Mude a cor de uma classe e veja a alteração em **Histórico**, com o nome de quem mudou.
 8. Em **Depósitos**, cadastre os depósitos reais (1, 4, 5, 6, 7 e 17) com o tamanho de cada um. No D01, marque só a classe Químicos.
@@ -164,14 +165,15 @@ Preencha o `.env.local` com a URL e a chave anon e abra `http://localhost:5173`.
 12. Em **Recebimento**, registre uma nota com dois itens anexando qualquer PDF. Confira as quantidades, marque o checklist e aprove. O saldo dos materiais sobe e a entrada aparece nas movimentações.
 13. Faça outro recebimento com uma quantidade menor que a da nota. Como almoxarife, o sistema não deixa aprovar: registre a divergência com uma foto. Entre como gestor e aprove com o conferido.
 14. Troque para o modo noturno e confira as telas.
-15. Cadastre um crachá no usuário solicitante. Entre como ele e faça um pedido. Como almoxarife, separe e confirme a retirada digitando o crachá. O saldo cai e o pedido aparece como retirado.
+15. Entre como um solicitante e faça um pedido. Como almoxarife, separe e confirme a retirada digitando o PRN do solicitante. O saldo cai e o pedido aparece como retirado.
 16. Peça uma quantidade que use o saldo emergencial e confira que o pedido vai para o gestor.
 17. Abra um inventário de um depósito, conte um item com diferença e conclua como gestor. O saldo é ajustado e o ajuste aparece nas movimentações.
 18. Em Relatórios, gere o relatório semanal e baixe os arquivos em Excel.
 19. Com o sistema aberto, desligue a internet: aparece a faixa vermelha e as consultas continuam com os últimos dados.
-20. Cadastre os setores Elétrica e Mecânica com as classes que cada um pede. Crie um copo para cada centro de custo, com o mesmo PRN. Entre como solicitante da Elétrica e confira que ele vê só o copo da Elétrica e não vê rolamentos.
+20. Cadastre os setores Elétrica e Mecânica com as classes que cada um pede. Crie um copo para cada centro de custo, com o mesmo código SAP. Entre como solicitante da Elétrica e confira que ele vê só o copo da Elétrica e não vê rolamentos.
 21. Confirme uma retirada e imprima o comprovante em cupom e em A4.
 22. Deixe o sistema aberto em Materiais e peça para alguém criar um pedido: o número aparece no item Pedidos do menu.
+23. Tente criar um usuário com PRN de 7 dígitos: o sistema recusa. Remova um usuário e crie outro com o mesmo e-mail e o mesmo PRN: agora funciona. Tente restaurar o removido: o sistema avisa que o e-mail já está em uso.
 
 ## Etiquetas
 
@@ -204,9 +206,13 @@ Os números laranja no menu mostram o que outras pessoas criaram ou mudaram desd
 
 As barras lateral e do topo podem ser recolhidas pelas alças na borda de cada uma, com um movimento curto e um som leve de clique. A escolha fica salva no aparelho.
 
-## Crachá
+## PRN
 
-Cadastre no usuário o número do crachá do jeito que o leitor mostra. O sistema ignora espaços, dois-pontos e diferença de maiúsculas, então "04:A1:B2" e "04a1b2" valem o mesmo. Leitores USB funcionam como teclado: o número aparece no campo da retirada e o Enter confirma. No celular Android com Chrome, o botão "Ler pelo celular (NFC)" usa o NFC do aparelho.
+O PRN é o código da pessoa na empresa, com exatamente 8 dígitos. Ele é obrigatório no cadastro de usuário, serve para entrar no sistema (no lugar do e-mail) e é o que confirma a retirada de material: o almoxarife digita o PRN de quem está levando e aperta Enter. Um leitor de crachá USB também funciona, desde que digite o PRN. Quem não tem PRN em mãos confirma a retirada pela foto.
+
+Usuários cadastrados antes desta regra continuam entrando com o código antigo até alguém editar o cadastro. O campo crachá deixou de ser usado.
+
+Nos materiais, o campo que antes se chamava PRN agora se chama **código SAP**. Os valores já cadastrados continuam os mesmos.
 
 ## Instalar como aplicativo
 
@@ -220,7 +226,7 @@ O indicador **Ao vivo**, no topo, mostra que as telas estão recebendo as mudan�
 
 O envio de e-mails padrão do Supabase só entrega para a equipe do projeto e manda poucos e-mails por hora. Durante o desenvolvimento, use senha provisória. Antes de liberar para os usuários, configure um servidor de e-mail próprio em **Authentication > Emails > SMTP Settings**. Só então o convite por e-mail e o "Esqueci minha senha" funcionam para todo mundo.
 
-Usuários sem e-mail entram pela matrícula. Para eles, o sistema cria um endereço interno que termina em `@sem-email.local`, que não recebe mensagens. Quando esquecerem a senha, o gestor define uma provisória.
+Usuários sem e-mail entram pelo PRN. Para eles, o sistema cria um endereço interno que termina em `@sem-email.local`, que não recebe mensagens. Quando esquecerem a senha, o gestor define uma provisória.
 
 ## Plano do Supabase
 
@@ -272,6 +278,7 @@ supabase/migrations/0002_materiais.sql  Depósitos, materiais, saldo, etiquetas,
 supabase/migrations/0003_recebimento.sql  Recebimento, conferência, divergência e entrada no estoque
 supabase/migrations/0004_pedidos_relatorios.sql  Pedidos, retirada, devolução, inventário, rotatividade e relatório semanal
 supabase/migrations/0005_centro_custo.sql  Estoque por setor e centro de custo
+supabase/migrations/0006_prn_usuarios.sql  PRN do usuário, retirada pelo PRN e e-mail reaproveitável
 supabase/functions/gerenciar-usuario/index.ts   Função de servidor dos usuários
 prototipo/                         Protótipo anterior, só para consulta
 ```

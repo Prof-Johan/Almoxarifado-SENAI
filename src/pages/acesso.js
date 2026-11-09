@@ -46,11 +46,11 @@ function mostrarErro(id, mensagem) {
 export function mostrarLogin(aviso = '', aoEntrar) {
   raiz().innerHTML = cartao(`
     <h1 class="auth-heading">Entrar no almoxarifado</h1>
-    <p class="auth-description">Use o e-mail ou a matrícula que o gestor cadastrou para você.</p>
+    <p class="auth-description">Use o e-mail ou o PRN que o gestor cadastrou para você.</p>
     ${aviso ? `<div class="notice auth-aviso" role="status">${esc(aviso)}</div>` : ''}
     <form id="formLogin" class="auth-fields" novalidate>
       <div class="auth-field">
-        <label for="login">E-mail ou matrícula</label>
+        <label for="login">E-mail ou PRN</label>
         <input id="login" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </div>
       ${campoSenha('senha', 'Senha', 'current-password')}
@@ -68,7 +68,7 @@ export function mostrarLogin(aviso = '', aoEntrar) {
     e.preventDefault();
     const login = $('#login').value.trim();
     const senha = $('#senha').value;
-    if (!login || !senha) return mostrarErro('erroLogin', 'Preencha o e-mail ou a matrícula e a senha.');
+    if (!login || !senha) return mostrarErro('erroLogin', 'Preencha o e-mail ou o PRN e a senha.');
     mostrarErro('erroLogin', '');
     await executando(e.submitter || $('#formLogin button[type=submit]'), async () => {
       try {
@@ -87,10 +87,10 @@ export function mostrarLogin(aviso = '', aoEntrar) {
 function mostrarEsqueci(aoEntrar) {
   raiz().innerHTML = cartao(`
     <h1 class="auth-heading">Recuperar a senha</h1>
-    <p class="auth-description">Informe o e-mail ou a matrícula. Se a conta tiver e-mail cadastrado, você recebe um link para criar uma nova senha.</p>
+    <p class="auth-description">Informe o e-mail ou o PRN. Se a conta tiver e-mail cadastrado, você recebe um link para criar uma nova senha.</p>
     <form id="formEsqueci" class="auth-fields" novalidate>
       <div class="auth-field">
-        <label for="loginEsqueci">E-mail ou matrícula</label>
+        <label for="loginEsqueci">E-mail ou PRN</label>
         <input id="loginEsqueci" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </div>
       <p class="auth-erro" id="erroEsqueci" role="alert" hidden></p>
@@ -108,7 +108,7 @@ function mostrarEsqueci(aoEntrar) {
     const login = $('#loginEsqueci').value.trim();
     mostrarErro('erroEsqueci', '');
     $('#okEsqueci').hidden = true;
-    if (!login) return mostrarErro('erroEsqueci', 'Informe o e-mail ou a matrícula.');
+    if (!login) return mostrarErro('erroEsqueci', 'Informe o e-mail ou o PRN.');
     await executando(e.submitter, async () => {
       try {
         const email = await resolverEmail(login);

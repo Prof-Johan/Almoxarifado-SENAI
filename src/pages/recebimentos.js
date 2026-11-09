@@ -29,7 +29,7 @@ const FILTROS = {
 // Checklist da conferência, conforme o POP (item 04 da justificativa).
 const CHECKLIST = [
   ['descricao', 'A descrição dos materiais confere com a nota'],
-  ['codigo', 'O código (PRN) de cada item confere'],
+  ['codigo', 'O código SAP de cada item confere'],
   ['quantidade', 'As quantidades foram contadas'],
   ['unidade', 'A unidade de controle confere (caixa, unidade, mL...)'],
   ['condicoes', 'As condições aparentes foram verificadas'],
@@ -68,7 +68,7 @@ export async function montar(el, ctx) {
       ...x,
       classe: classes.get(x.classe_id),
       local: codigoLocalizacao(depositos.get(x.deposito_id)?.numero, x.prateleira, x.lado, x.andar, x.posicao),
-      rotulo: `${x.codigo} · ${x.nome} · PRN ${x.prn}`,
+      rotulo: `${x.codigo} · ${x.nome} · SAP ${x.prn}`,
     }));
     porId.materiais = new Map(materiais.map(x => [x.id, x]));
     recebimentos = r;
@@ -156,7 +156,7 @@ export async function montar(el, ctx) {
 
   function linhaItem() {
     return `<div class="linha-item">
-      <input class="item-material" list="listaMateriaisRec" placeholder="Busque por nome, PRN ou código" aria-label="Material" autocomplete="off">
+      <input class="item-material" list="listaMateriaisRec" placeholder="Busque por nome, código SAP ou código" aria-label="Material" autocomplete="off">
       <input class="item-qtd" type="number" min="0" step="any" placeholder="Qtd. na nota" aria-label="Quantidade na nota">
       <span class="item-un muted small"></span>
       <button class="btn btn-ghost btn-sm" type="button" data-tirar-linha aria-label="Tirar item">×</button>
