@@ -61,7 +61,7 @@ As regras ficam no banco de dados, na função `validar_gestao_usuario`. Mesmo q
 
 São cinco etapas, nesta ordem: Supabase, conta master, função de servidor, GitHub e Vercel.
 
-> **Já tem a entrega 6 no ar?** Rode o `supabase/migrations/0007_quantidade_inteira.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. No fim, o script lista os materiais com saldo quebrado (por exemplo, 9,6 rolamentos) e os pedidos em aberto com quantidade quebrada: corrija o saldo com **Ajustar saldo** e cancele esses pedidos para serem feitos de novo.
+> **Já tem a entrega 6 no ar?** Rode o `supabase/migrations/0007_quantidade_inteira.sql` no SQL Editor e envie os arquivos novos para o GitHub. A função de servidor não mudou. O script zera o saldo dos materiais que ficaram com quantidade quebrada (por exemplo, 9,6 rolamentos). Cada um vira um ajuste nas movimentações, com o saldo de antes no motivo. No fim, ele lista esses materiais e os pedidos em aberto com quantidade quebrada: conte o físico, lance o saldo certo com **Ajustar saldo** e cancele esses pedidos para serem feitos de novo.
 >
 > **Ainda na entrega 5?** Rode antes o `0006_prn_usuarios.sql` e publique de novo a função `gerenciar-usuario`, como explicado na entrega 6. Se estiver numa entrega anterior, rode os scripts que faltam, em ordem.
 

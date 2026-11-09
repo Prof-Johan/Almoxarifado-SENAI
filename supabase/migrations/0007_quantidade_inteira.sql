@@ -130,13 +130,33 @@ drop trigger if exists b_quantidade_inteira on public.inventario_itens;
 create trigger b_quantidade_inteira before insert or update on public.inventario_itens
   for each row execute function public.conferir_inteiro_inventario_item();
 
--- 6. O que já entrou quebrado antes desta regra.
--- Materiais com saldo quebrado: corrija com "Ajustar saldo" (gestor ou master).
--- Pedidos em aberto com quantidade quebrada: cancele e peça de novo.
-select 'Saldo quebrado' as problema, m.codigo as referencia, m.nome as material,
-       m.saldo::text || ' ' || m.unidade_medida as quantidade
-  from public.materiais m
- where m.removido_em is null and m.saldo <> trunc(m.saldo) and not public.unidade_fracionavel(m.unidade_medida)
+-- 6. Materiais que ficaram com saldo quebrado antes desta regra (ex.: 9,6
+-- rolamentos) são zerados. Cada um vira um ajuste nas movimentações, feito
+-- pelo "Sistema", com o saldo de antes registrado. Depois, conte o físico
+-- e lance o saldo certo com "Ajustar saldo".
+drop table if exists pg_temp.zerados_0007;
+create temporary table zerados_0007 (codigo text, material text, saldo_anterior text);
+do $$
+declare
+  v_mat record;
+begin
+  for v_mat in
+    select id, codigo, nome, saldo, unidade_medida from public.materiais
+     where saldo <> trunc(saldo) and not public.unidade_fracionavel(unidade_medida)
+     order by codigo
+  loop
+    perform public.registrar_movimento(v_mat.id, 'AJUSTE', -v_mat.saldo,
+      'Saldo zerado: estava com quantidade quebrada (' || replace(v_mat.saldo::text, '.', ',') || ' ' || v_mat.unidade_medida
+        || '), que não existe para este material. Conte o físico e ajuste o saldo.',
+      null);
+    insert into zerados_0007 values (v_mat.codigo, v_mat.nome, replace(v_mat.saldo::text, '.', ',') || ' ' || v_mat.unidade_medida);
+  end loop;
+end $$;
+
+-- 7. Resultado: materiais zerados agora e pedidos em aberto com quantidade
+-- quebrada (cancele esses pedidos para serem feitos de novo).
+select 'Saldo zerado (conte e ajuste)' as problema, codigo as referencia, material, saldo_anterior as quantidade
+  from zerados_0007
 union all
 select 'Pedido em aberto com quantidade quebrada', p.numero, m.nome,
        coalesce(i.quantidade_separada, i.quantidade)::text || ' ' || m.unidade_medida
